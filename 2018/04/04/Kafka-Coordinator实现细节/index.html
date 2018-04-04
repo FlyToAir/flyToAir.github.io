@@ -5,7 +5,7 @@
   
 
 
-<html class="theme-next muse use-motion" lang="">
+<html class="theme-next gemini use-motion" lang="">
 <head>
   <meta charset="UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -91,7 +91,8 @@
 <meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-25/33077532.jpg">
 <meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-25/40124304.jpg">
 <meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-3-26/38785112.jpg">
-<meta property="og:updated_time" content="2018-04-04T07:42:50.176Z">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/29650397.jpg">
+<meta property="og:updated_time" content="2018-04-04T07:44:07.656Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kafka Coordinator实现细节">
 <meta name="twitter:description" content="GroupCoordinator 每个kafka server在启动的时候会创建一个GroupCoordinator用于管理group以及consumer的offset fetch/commit  在创建GroupCoordinator实例时不仅需要brokerId、group以及offset config，还需要传入replicaManager，其作用是 GroupMetadataManager">
@@ -103,7 +104,7 @@
   var NexT = window.NexT || {};
   var CONFIG = {
     root: '/',
-    scheme: 'Muse',
+    scheme: 'Gemini',
     version: '5.1.4',
     sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
     fancybox: true,
@@ -251,9 +252,9 @@
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/04/Kafka-Coordinator实现细节/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="John Doe">
+      <meta itemprop="name" content="fbZhu">
       <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
@@ -578,7 +579,7 @@
 <p>能够执行<code>onCompleteJoin</code>说明<code>notYetRejoinedMembers</code>已经是空的了，这里的移除操作感觉多余了？？？？</p>
 <p><strong>JoinGroupResult</strong>：<br><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> joinResult = <span class="type">JoinGroupResult</span>(</span><br><span class="line">  members=<span class="keyword">if</span> (member.memberId == group.leaderId) &#123; group.currentMemberMetadata &#125; <span class="keyword">else</span> &#123; <span class="type">Map</span>.empty &#125;,</span><br><span class="line">  memberId=member.memberId,</span><br><span class="line">  generationId=group.generationId,</span><br><span class="line">  subProtocol=group.protocol,</span><br><span class="line">  leaderId=group.leaderId,</span><br><span class="line">  errorCode=<span class="type">Errors</span>.<span class="type">NONE</span>.code)</span><br></pre></td></tr></table></figure></p>
 <p>group的leaderId采取先来后到的原则，新来的memberId作为leaderId。</p>
-<p>对于非正常重启一个consumer所遇到的长时间等待可以用下图加深理解：<br>Note left of client: normal consuming…<br>client-&gt;server: HeartBeat(I’m member c-1 in group GG)<br>Note left of client: suddenly shutdown and reopen<br>client-&gt;server: JoinGroupReq(I want to join GG with UNKNOWN memberId)<br>Note left of server: prepare rebalence, c-1 need rejoin<br>Note left of server: after sessionTimeout,c-1 was marked failed<br>server-client: JoinGroupRsp(you are leader,memberId is c-2,members=[c-1])<br>Note left of client: consuming</p>
+<p>对于非正常重启一个consumer所遇到的长时间等待可以用下图加深理解：<br><img src="http://olt6kofv9.bkt.clouddn.com/18-4-4/29650397.jpg" alt=""></p>
 
       
     </div>
@@ -688,8 +689,12 @@
         <div class="site-overview">
           <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
             
-              <p class="site-author-name" itemprop="name">John Doe</p>
-              <p class="site-description motion-element" itemprop="description"></p>
+              <img class="site-author-image" itemprop="image"
+                src="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg"
+                alt="fbZhu" />
+            
+              <p class="site-author-name" itemprop="name">fbZhu</p>
+              <p class="site-description motion-element" itemprop="description">人为什么越长大越孤单？答:内心中有秘密！无法诉说</p>
           </div>
 
           <nav class="site-state motion-element">
@@ -769,7 +774,7 @@
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>
-  <span class="author" itemprop="copyrightHolder">John Doe</span>
+  <span class="author" itemprop="copyrightHolder">fbZhu</span>
 
   
 </div>
@@ -783,7 +788,7 @@
 
 
 
-  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.4</div>
 
 
 
@@ -895,6 +900,13 @@
 
   
   
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
 
   
   <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
