@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="Hexo, NexT" />
+  <meta name="keywords" content="Kafka," />
 
 
 
@@ -79,13 +79,23 @@
 
 
 
-<meta property="og:type" content="website">
-<meta property="og:title" content="Hexo">
-<meta property="og:url" content="http://yoursite.com/index.html">
+<meta name="description" content="GroupCoordinator 每个kafka server在启动的时候会创建一个GroupCoordinator用于管理group以及consumer的offset fetch/commit  在创建GroupCoordinator实例时不仅需要brokerId、group以及offset config，还需要传入replicaManager，其作用是 GroupMetadataManager">
+<meta name="keywords" content="Kafka">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kafka Coordinator实现细节">
+<meta property="og:url" content="http://yoursite.com/2018/04/04/Kafka-Coordinator实现细节/index.html">
 <meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="GroupCoordinator 每个kafka server在启动的时候会创建一个GroupCoordinator用于管理group以及consumer的offset fetch/commit  在创建GroupCoordinator实例时不仅需要brokerId、group以及offset config，还需要传入replicaManager，其作用是 GroupMetadataManager">
 <meta property="og:locale" content="default">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-25/78440956.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-25/33077532.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-25/40124304.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-3-26/38785112.jpg">
+<meta property="og:updated_time" content="2018-04-04T07:30:59.939Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Hexo">
+<meta name="twitter:title" content="Kafka Coordinator实现细节">
+<meta name="twitter:description" content="GroupCoordinator 每个kafka server在启动的时候会创建一个GroupCoordinator用于管理group以及consumer的offset fetch/commit  在创建GroupCoordinator实例时不仅需要brokerId、group以及offset config，还需要传入replicaManager，其作用是 GroupMetadataManager">
+<meta name="twitter:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-25/78440956.jpg">
 
 
 
@@ -115,13 +125,13 @@
 
 
 
-  <link rel="canonical" href="http://yoursite.com/"/>
+  <link rel="canonical" href="http://yoursite.com/2018/04/04/Kafka-Coordinator实现细节/"/>
 
 
 
 
 
-  <title>Hexo</title>
+  <title>Kafka Coordinator实现细节 | Hexo</title>
   
 
 
@@ -140,8 +150,7 @@
     
   
 
-  <div class="container sidebar-position-left 
-  page-home">
+  <div class="container sidebar-position-left page-post-detail">
     <div class="headband"></div>
 
     <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
@@ -214,9 +223,9 @@
         <div class="content-wrap">
           <div id="content" class="content">
             
-  <section id="posts" class="posts-expand">
+
+  <div id="posts" class="posts-expand">
     
-      
 
   
 
@@ -246,9 +255,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2018/04/04/Kafka-Coordinator实现细节/" itemprop="url">Kafka Coordinator实现细节</a></h1>
+          <h1 class="post-title" itemprop="name headline">Kafka Coordinator实现细节</h1>
         
 
         <div class="post-meta">
@@ -309,9 +316,7 @@
       
 
       
-        
-          
-            <h1 id="GroupCoordinator"><a href="#GroupCoordinator" class="headerlink" title="GroupCoordinator"></a>GroupCoordinator</h1><blockquote>
+        <h1 id="GroupCoordinator"><a href="#GroupCoordinator" class="headerlink" title="GroupCoordinator"></a>GroupCoordinator</h1><blockquote>
 <p>每个kafka server在启动的时候会创建一个GroupCoordinator用于管理group以及consumer的offset fetch/commit</p>
 </blockquote>
 <p>在创建GroupCoordinator实例时不仅需要brokerId、group以及offset config，还需要传入<strong>replicaManager</strong>，其作用是</p>
@@ -565,8 +570,6 @@
 <p>group的leaderId采取先来后到的原则，新来的memberId作为leaderId。</p>
 <p>对于非正常重启一个consumer所遇到的长时间等待可以用下图加深理解：</p>
 
-          
-        
       
     </div>
     
@@ -581,284 +584,36 @@
 
     <footer class="post-footer">
       
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/04/test-blog/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="John Doe">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Hexo">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2018/04/04/test-blog/" itemprop="url">test_blog</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">Posted on</span>
-              
-              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-04-04T11:22:14+08:00">
-                2018-04-04
-              </time>
-            
-
-            
-
-            
-          </span>
-
+        <div class="post-tags">
           
-
+            <a href="/tags/Kafka/" rel="tag"># Kafka</a>
           
-            
-          
-
-          
-          
-             <span id="/2018/04/04/test-blog/" class="leancloud_visitors" data-flag-title="test_blog">
-               <span class="post-meta-divider">|</span>
-               <span class="post-meta-item-icon">
-                 <i class="fa fa-eye"></i>
-               </span>
-               
-                 <span class="post-meta-item-text">Visitors&#58;</span>
-               
-                 <span class="leancloud-visitors-count"></span>
-             </span>
-          
-
-          
-
-          
-
-          
-
         </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h1 id="this-is-title"><a href="#this-is-title" class="headerlink" title="this is title"></a>this is title</h1><h2 id="this-is-the-second-title"><a href="#this-is-the-second-title" class="headerlink" title="this is the second title"></a>this is the second title</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//this is code</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    System.out.println(<span class="string">"hello world"</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
       
 
       
       
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
       
 
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/04/hello-world/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="John Doe">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Hexo">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2018/04/04/hello-world/" itemprop="url">Hello World</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
             
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">Posted on</span>
-              
-              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-04-04T10:16:19+08:00">
-                2018-04-04
-              </time>
+              <a href="/2018/04/04/test-blog/" rel="next" title="test_blog">
+                <i class="fa fa-chevron-left"></i> test_blog
+              </a>
             
+          </div>
 
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
             
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-             <span id="/2018/04/04/hello-world/" class="leancloud_visitors" data-flag-title="Hello World">
-               <span class="post-meta-divider">|</span>
-               <span class="post-meta-item-icon">
-                 <i class="fa fa-eye"></i>
-               </span>
-               
-                 <span class="post-meta-item-text">Visitors&#58;</span>
-               
-                 <span class="leancloud-visitors-count"></span>
-             </span>
-          
-
-          
-
-          
-
-          
-
+          </div>
         </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
       
 
       
-        
-          
-            <p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
       
     </footer>
   </div>
@@ -868,10 +623,11 @@
   </article>
 
 
-    
-  </section>
 
-  
+    <div class="post-spread">
+      
+    </div>
+  </div>
 
 
           </div>
@@ -879,6 +635,15 @@
 
 
           
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC8zNTQ1NC8xMTk5MA"></div>
+    </div>
+
+  
+
+
 
         </div>
         
@@ -899,8 +664,17 @@
       
 
       
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
 
-      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+      <section class="site-overview-wrap sidebar-panel">
         <div class="site-overview">
           <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
             
@@ -951,6 +725,22 @@
         </div>
       </section>
 
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#GroupCoordinator"><span class="nav-number">1.</span> <span class="nav-text">GroupCoordinator</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#GroupMetadataManager"><span class="nav-number">1.1.</span> <span class="nav-text">GroupMetadataManager</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#consumer-offsets"><span class="nav-number">1.1.1.</span> <span class="nav-text">__consumer_offsets</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#小实验"><span class="nav-number">1.1.1.1.</span> <span class="nav-text">小实验</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#保存group元数据"><span class="nav-number">1.1.2.</span> <span class="nav-text">保存group元数据</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#生成消息"><span class="nav-number">1.1.2.1.</span> <span class="nav-text">生成消息</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#设置appendLog回调函数"><span class="nav-number">1.1.2.2.</span> <span class="nav-text">设置appendLog回调函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#执行storeGroup回调函数"><span class="nav-number">1.1.2.3.</span> <span class="nav-text">执行storeGroup回调函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#往replicas写group数据"><span class="nav-number">1.1.2.4.</span> <span class="nav-text">往replicas写group数据</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#保存offset-commit"><span class="nav-number">1.1.3.</span> <span class="nav-text">保存offset commit</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#offsetCommit回调函数"><span class="nav-number">1.1.3.1.</span> <span class="nav-text">offsetCommit回调函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#offset以及group元数据的清理工作"><span class="nav-number">1.1.4.</span> <span class="nav-text">offset以及group元数据的清理工作</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#remove-expire-offset"><span class="nav-number">1.1.4.1.</span> <span class="nav-text">remove expire offset</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#立墓碑"><span class="nav-number">1.1.4.2.</span> <span class="nav-text">立墓碑</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#consumer与Coordinator的连接过程"><span class="nav-number">2.</span> <span class="nav-text">consumer与Coordinator的连接过程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#确定coordinator"><span class="nav-number">2.1.</span> <span class="nav-text">确定coordinator</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#handleGroupCoordinatorRequest"><span class="nav-number">2.1.1.</span> <span class="nav-text">handleGroupCoordinatorRequest</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#handleJoinGroup"><span class="nav-number">2.2.</span> <span class="nav-text">handleJoinGroup</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#校验"><span class="nav-number">2.2.1.</span> <span class="nav-text">校验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#响应请求"><span class="nav-number">2.2.2.</span> <span class="nav-text">响应请求</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Dead"><span class="nav-number">2.2.2.1.</span> <span class="nav-text">Dead</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#PreparingRebalance"><span class="nav-number">2.2.2.2.</span> <span class="nav-text">PreparingRebalance</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#AwaitingSync"><span class="nav-number">2.2.2.3.</span> <span class="nav-text">AwaitingSync</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Empty-or-Stable"><span class="nav-number">2.2.2.4.</span> <span class="nav-text">Empty or Stable</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#handleSyncGroup"><span class="nav-number">2.3.</span> <span class="nav-text">handleSyncGroup</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#handleLeaveGroup"><span class="nav-number">2.4.</span> <span class="nav-text">handleLeaveGroup</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1、从心跳DOP中移除"><span class="nav-number">2.4.1.</span> <span class="nav-text">1、从心跳DOP中移除</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2、从group中移除"><span class="nav-number">2.4.2.</span> <span class="nav-text">2、从group中移除</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3、组装反馈信息"><span class="nav-number">2.4.3.</span> <span class="nav-text">3、组装反馈信息</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#handleFetchOffsets"><span class="nav-number">2.5.</span> <span class="nav-text">handleFetchOffsets</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Helper"><span class="nav-number">3.</span> <span class="nav-text">Helper</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#分区变化时consumer是如何rejoin的？"><span class="nav-number">3.1.</span> <span class="nav-text">分区变化时consumer是如何rejoin的？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#how-to-prepare-rebalance"><span class="nav-number">3.2.</span> <span class="nav-text"> how to prepare rebalance</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#DelayedOperation-And-DelayedOperationPurgatory"><span class="nav-number">3.2.1.</span> <span class="nav-text">DelayedOperation And DelayedOperationPurgatory</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Watchers"><span class="nav-number">3.2.1.1.</span> <span class="nav-text">Watchers</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#其他参数及属性"><span class="nav-number">3.2.1.2.</span> <span class="nav-text">其他参数及属性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#tryCompleteElseWatch"><span class="nav-number">3.2.1.3.</span> <span class="nav-text">tryCompleteElseWatch</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DelayedJoin"><span class="nav-number">3.2.2.</span> <span class="nav-text">DelayedJoin</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#notYetRejoinedMembers-AND-awaitingJoinCallback"><span class="nav-number">3.2.2.1.</span> <span class="nav-text">notYetRejoinedMembers AND awaitingJoinCallback</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#tryComplete"><span class="nav-number">3.2.2.2.</span> <span class="nav-text">tryComplete</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#onExpireHeartbeat"><span class="nav-number">3.2.2.3.</span> <span class="nav-text">onExpireHeartbeat</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#onCompleteJoin"><span class="nav-number">3.2.2.4.</span> <span class="nav-text">onCompleteJoin</span></a></li></ol></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
       
 
       
@@ -1097,6 +887,10 @@
   
 
   
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
 
   
 
@@ -1125,6 +919,17 @@
 
 
 
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
   
 
 
