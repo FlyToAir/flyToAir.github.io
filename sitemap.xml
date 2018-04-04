@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <url>
+    <loc>http://yoursite.com/tags/index.html</loc>
+    
+    <lastmod>2018-04-04T07:44:50.377Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2018/04/04/Kafka-Coordinator%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82/</loc>
+    
+    <lastmod>2018-04-04T07:44:07.656Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2018/04/04/test-blog/</loc>
+    
+    <lastmod>2018-04-04T07:28:05.135Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2018/04/04/hello-world/</loc>
+    
+    <lastmod>2018-04-04T02:16:19.239Z</lastmod>
+    
+  </url>
+  
+</urlset>
