@@ -244,6 +244,149 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/03/07/producer的回调实现/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2017/03/07/producer的回调实现/" itemprop="url">producer的回调实现</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-03-07T13:23:01+08:00">
+                2017-03-07
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2017/03/07/producer的回调实现/" class="leancloud_visitors" data-flag-title="producer的回调实现">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <blockquote>
+<p>为了方便用户感知发送的情况，kafka producer中提供了<code>callback</code>机制，springkafka中实现了<code>ProducerListener</code></p>
+</blockquote>
+<h3 id="遇到的问题"><a href="#遇到的问题" class="headerlink" title="遇到的问题"></a>遇到的问题</h3><p>近期生产环境上由于版本BUG问题导致一段时间内某台broker出现假死的异常状态，在这异常期间内发送到该broker上的消息都失败了。在各个系统中我们实现了一个ProducerListener用于将发送失败的消息写入到Hbase中，方便后续处理。</p>
+<p>然而，实际情况是Hbase中(与log中一致，排除写入Hbase的错误)的错误记录<strong>不全</strong>。</p>
+<p>接下来以从上往下的层次顺序解析下Producer callback的运行机制，以及对Exception的处理</p>
+<h3 id="ProducerListener"><a href="#ProducerListener" class="headerlink" title="ProducerListener"></a>ProducerListener</h3><p>首先看下KafkaTemplate的简化UML图<br><img src="https://leanote.com/api/file/getImage?fileId=591ac814ab64415c1c001112" alt=""><br>在doSend方法中为producer的send方法设置回调函数：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">protected ListenableFuture&lt;SendResult&lt;K, V&gt;&gt; doSend(final ProducerRecord&lt;K, V&gt; producerRecord) &#123;</span><br><span class="line">    this.producer.send(producerRecord, new Callback() &#123;</span><br><span class="line">        public void onCompletion(RecordMetadata metadata, Exception exception) &#123;</span><br><span class="line">            if(exception == null) &#123;</span><br><span class="line">                if(KafkaTemplate.this.producerListener != null &amp;&amp; KafkaTemplate.this.producerListener.isInterestedInSuccess()) &#123;</span><br><span class="line">                    KafkaTemplate.this.producerListener.onSuccess(...);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                if(KafkaTemplate.this.producerListener != null) &#123;</span><br><span class="line">                    KafkaTemplate.this.producerListener.onError(...,exception);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>如果我们在创建KafkaTemplate时没有设置producerListener属性，那么就会使用默认的：<code>LoggingProducerListener</code>。</p>
+<h3 id="KafkaProducer"><a href="#KafkaProducer" class="headerlink" title="KafkaProducer"></a>KafkaProducer</h3><p>之前对KafkaProducer的异步发送机制实现进行过分析，有一个sender线程用于协调消息队列及网络通信的工作，在运行过程中可能发生多种异常需要统一进行处理：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private Future&lt;RecordMetadata&gt; doSend(ProducerRecord&lt;K, V&gt; record, Callback callback) &#123;</span><br><span class="line">    try &#123;</span><br><span class="line">        Callback interceptCallback = this.interceptors == null ? callback : new InterceptorCallback&lt;&gt;(callback, this.interceptors, tp);</span><br><span class="line">        RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey, serializedValue, interceptCallback, remainingWaitMs);</span><br><span class="line">        this.sender.wakeup();</span><br><span class="line">        return result.future;</span><br><span class="line">    //API异常会调用callback的onCompletion方法</span><br><span class="line">    &#125;catch (ApiException e) &#123;</span><br><span class="line">        callback.onCompletion(null, e);</span><br><span class="line">        this.errors.record();</span><br><span class="line">        if (this.interceptors != null)</span><br><span class="line">            this.interceptors.onSendError(record, tp, e);</span><br><span class="line">        return new FutureFailure(e);</span><br><span class="line">    //其他异常直接抛出</span><br><span class="line">    &#125; catch (Exception e)&#123;</span><br><span class="line">        if (this.interceptors != null)</span><br><span class="line">            this.interceptors.onSendError(record, tp, e);</span><br><span class="line">        throw e;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></p>
+<p><code>interceptCallback</code>将KafkaTemplate注入的ProducerListener以及KafkaProducer配置的拦截器<code>ProducerInterceptors</code>组合在一起，统一对发送的执行结果进行拦截处理。</p>
+<p>通过append方法将拦截器配置到每个RecordBatch中<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public FutureRecordMetadata tryAppend( byte[] key, byte[] value, Callback callback) &#123;</span><br><span class="line">    ...</span><br><span class="line">    if (callback != null)</span><br><span class="line">    thunks.add(new Thunk(callback, future));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>Thunk是内部类，将callback于FutureRecordMetadata捆绑在一起。在每个RecordBatch被处理完成的时候(3种情况：<code>1.发送完成；2.失效；3.producer被强制关闭；</code>)会执行绑定的callback方法：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public void done(long baseOffset, long timestamp, RuntimeException exception) &#123;</span><br><span class="line">    for (int i = 0; i &lt; this.thunks.size(); i++) &#123;</span><br><span class="line">        Thunk thunk = this.thunks.get(i);</span><br><span class="line">        if (exception == null) &#123;</span><br><span class="line">            RecordMetadata metadata = new RecordMetadata(...);</span><br><span class="line">            thunk.callback.onCompletion(metadata, null);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            thunk.callback.onCompletion(null, exception);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>按理来说，这里已经覆盖了所有的情况，为什么现实使用中会有发送失败未记录下来的情况呢？</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/03/01/Kafka consumer原理剖析/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -834,6 +977,383 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/02/24/《深入理解JVM》读书笔记/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2017/02/24/《深入理解JVM》读书笔记/" itemprop="url">《深入理解JVM》读书笔记</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-02-24T15:29:04+08:00">
+                2017-02-24
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2017/02/24/《深入理解JVM》读书笔记/" class="leancloud_visitors" data-flag-title="《深入理解JVM》读书笔记">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <blockquote>
+<p>《Understanding the JVM》这本书拿到手后刷了一遍，没过多久就忘得差不多了，为了加深印象和记录所想于此篇笔记当中</p>
+</blockquote>
+<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><p><a href="http://files.cnblogs.com/files/zhuYears/Java%E8%99%9A%E6%8B%9F%E6%9C%BA%E8%A7%84%E8%8C%83%EF%BC%88JavaSE7%EF%BC%89.pdf" target="_blank" rel="noopener">java虚拟机规范 SE7</a><br><a href="http://blog.caoxudong.info/blog/2011/07/29/translation_memory_management_in_the_java_hotspot_virtual_machine" target="_blank" rel="noopener">Memory management in the Java HotSpot Virtual Machine 白皮书的中文翻译</a></p>
+<hr>
+<blockquote>
+<p><strong>显式内存管理容易引发的两个问题</strong>：</p>
+</blockquote>
+<ol>
+<li>引用挂起：将A对象引用的内存释放掉并分配给B对象，当A再次访问引用的内存时，结果无法预测</li>
+<li>内存泄漏：以单向链表为例，在释放一个链表所占用的内存时如果在处理表头时系统出现了异常，那么整个链表的元素都无法被引用。<h2 id="第二章-java内存区域与内存溢出异常"><a href="#第二章-java内存区域与内存溢出异常" class="headerlink" title="第二章 java内存区域与内存溢出异常"></a>第二章 java内存区域与内存溢出异常</h2><h3 id="运行时数据区"><a href="#运行时数据区" class="headerlink" title="运行时数据区"></a>运行时数据区</h3>区域名称 | 用处 | 访问性 | 生命周期 |抛出的异常<br>—|—|—|—|—|<br>PC寄存器 | 指令字节码行号指示器 | 线程私有 | 与线程相同 | 无<br>java虚拟机栈(也可以称作java栈) | 存储栈帧(包括局部变量表、动态链接、方法出口)|私有|有线程相同|StackOverflowError：线程请求分配空间过大； OutOfmemoryError：栈动态扩展时无法申请到足够空间<br>本地方法栈(也可以称作”C Stacks”)|为执行native方法服务|私有|线程分配|同上<br>java堆(也可叫做”GC堆”)|存放所有的对象实例以及数组，垃圾收集器管理的主要区域|共享|虚拟机启动时创建|OOM：所需堆超过了系统能提供的最大值<br>方法区(hotspot使用永久代实现方法区)|存放每一个类的结构信息，包括常量池、静态变量、构造函数和不同方法的字节码内容|共享|虚拟机启动时创建|OOM：无法满足内存分配需求</li>
+</ol>
+<ul>
+<li>直接内存虽然不是JVM定义的运行时内存，但是在<strong>NIO</strong>中会使用到</li>
+<li>对象在内存中分配到空间后虚拟机会将这块空间初始化为<strong>零值</strong>，这样保证了对象的属性在java代码中可以不赋初始值就可以直接使用。</li>
+<li>粗粒度来说，一台机器上单个线程可分配到的内存(指代<em>虚拟机栈+本地方法栈</em>) = nG(可用该内存上限) - maxHeapSize - maxPermSize(最大方法区容量)。考虑到内存资源紧张的多线程场景，如果想要获取更多的线程的话就需要通过减少堆以及栈空间(<code>-Xss</code>)容量<blockquote>
+<p>本地线程分配缓冲(Thread Local Allocation Buffer)，在创建对象时，虚拟机会为该对象分配内存空间，确切的说是从java堆中分配空间，而这一操作在多线程并发的情况下是<strong>非线程安全</strong>的，除了对内存分配动作进行同步的方案外，还有一种方法就是为每个线程在堆上预分配一块内存(TLAB)，这块堆内存空间就暂时变成<strong>线程私有</strong>的了，如此就将内存分配的动作分配到每个线程私有的空间上进行了，进而避免了并发的问题。 </p>
+</blockquote>
+</li>
+</ul>
+<h3 id="HotSpot代的划分"><a href="#HotSpot代的划分" class="headerlink" title="HotSpot代的划分"></a>HotSpot代的划分</h3><p>在HotSpot中，内存被分为3代：年轻代、老年代和永久代(即方法区)。</p>
+<ul>
+<li>对象初始分配在年轻代(大对象除外)</li>
+<li>对象在年轻代经历几次年轻代的垃圾回收(<em>young generation collections</em>)后升至老年代</li>
+</ul>
+<p>年轻代包含3个区域：一个Eden区和两个Survivor区</p>
+<ul>
+<li>大部分对象初始分配在Eden区</li>
+<li>Survivor中保存至少经过一次Young GC的对象</li>
+<li>如果<strong>To</strong>是空的，那么<strong>From</strong>会一直保留这些对象<br><img src="http://olt6kofv9.bkt.clouddn.com/18-2-6/48185774.jpg" alt=""><h2 id="第三章-GC与内存分配策略"><a href="#第三章-GC与内存分配策略" class="headerlink" title="第三章 GC与内存分配策略"></a>第三章 GC与内存分配策略</h2><h3 id="方法论"><a href="#方法论" class="headerlink" title="方法论"></a>方法论</h3><h4 id="判断对象是否可回收的方法"><a href="#判断对象是否可回收的方法" class="headerlink" title="判断对象是否可回收的方法"></a>判断对象是否可回收的方法</h4></li>
+</ul>
+<ol>
+<li>引用计数算法<br>该算法为每个对象添加一个引用计数器，引用了就+1，引用失效了就-1，变为0的对象就可以回收了。<br><strong>优点</strong>：实现简单，效率高；<br><strong>缺点</strong>：无法解决相互引用的问题</li>
+<li>可达性分析算法(GC Roots)<blockquote>
+<p>以HotSpot实现的算法为主</p>
+</blockquote>
+</li>
+</ol>
+<ul>
+<li>该算法从GC Roots出发，向下搜索，遍历的路径为<strong>引用链</strong>，能遍历到的节点代表对象可达，不必回收；无法遍历到的对象不可达，可回收。</li>
+<li>可作为GC Roots的包括全局性的引用(如常量和类静态属性)和执行上下文(如栈帧中的本地变量表)</li>
+<li>数据一致性问题：GC检查好比集合点名，需要对象停止当前的活动，否则在检查期间出现引用变化，那么久导致检查结果不准确了。为了解决这个问题，引入了<strong>安全点</strong>和<strong>安全区域</strong>的概念</li>
+</ul>
+<h4 id="GC算法"><a href="#GC算法" class="headerlink" title="GC算法"></a>GC算法</h4><table>
+<thead>
+<tr>
+<th>算法</th>
+<th>大致过程</th>
+<th>特点</th>
+<th>适用区域</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>标记-清除算法</td>
+<td>标记出需要回收的对象；GC时回收对象内存区域</td>
+<td>会产生大量不连续的内存碎片</td>
+<td>基础算法</td>
+</tr>
+<tr>
+<td>复制算法</td>
+<td>将内存分成(一般情况)8:1:1的空间，新生代使用8+1区域，GC时将存活对象移到剩下的1空间内，原区域完全回收</td>
+<td>不会产生内存碎片</td>
+<td>存活率低的新生代</td>
+</tr>
+<tr>
+<td>标记-整理算法</td>
+<td>标记、清除后将内存空间整理一下，保证有序</td>
+<td></td>
+<td>适用于回收频率低的老年代</td>
+</tr>
+</tbody>
+</table>
+<h3 id="HotSpot的垃圾收集器"><a href="#HotSpot的垃圾收集器" class="headerlink" title="HotSpot的垃圾收集器"></a>HotSpot的垃圾收集器</h3><table>
+<thead>
+<tr>
+<th>收集器</th>
+<th>说明</th>
+<th>算法</th>
+<th>适用环境</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Serial</td>
+<td>收集期间停止一切线程，单线程、停顿时间长、专心收集</td>
+<td>复制算法</td>
+<td>单CPU的Client、新生代</td>
+</tr>
+<tr>
+<td>ParNew</td>
+<td>Serial的多线程版本，能与CMS配合使用</td>
+<td>复制算法</td>
+<td>Server模式下的首选新生代收集器</td>
+</tr>
+<tr>
+<td>Parallel Scavenge</td>
+<td>关注点为吞吐率，即提高CPU的使用率</td>
+<td>复制</td>
+<td>吞吐量优先的新生代收集器</td>
+</tr>
+<tr>
+<td>Serial Old</td>
+<td>Serial的老年代版本</td>
+<td>标记-整理</td>
+<td>单线程Client老年代收集器</td>
+</tr>
+<tr>
+<td>Parallel Old</td>
+<td>Parallel Scavenge的老年代版本</td>
+<td>标记-整理</td>
+<td>吞吐量优先的老年代收集器</td>
+</tr>
+<tr>
+<td>CMS</td>
+<td>以获取最短回收停顿时间为目标、或产生空间碎片，CPU敏感</td>
+<td>标记-清除</td>
+<td>老年代收集器</td>
+</tr>
+<tr>
+<td>G1</td>
+<td>将内存分区域，计算每个区域的回收价值，高者优先收集</td>
+<td>标记-整理 +复值</td>
+<td>面向服务器端的收集器</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<ul>
+<li>Minor GC：新生代被填满时，GC暂停应用程序回收新生代空间的操作。Eden空间的对象要么被转移、要么被回收，转移的目的地是另一块Survior空间或者老年代</li>
+<li>Full GC：老年代被填满时，暂停所有应用线程，回收不再使用的对象，整理空间。（CMS和G1的老年代回收算法通过并发等手段减少停顿的时间，尽量达到在应用线程运行的同时进行垃圾回收）</li>
+</ul>
+</blockquote>
+<h3 id="内存分配与回收策略"><a href="#内存分配与回收策略" class="headerlink" title="内存分配与回收策略"></a>内存分配与回收策略</h3><p>####1. 对象优先分配在Eden区<br>如果Eden区无法存放新的对象，那么将触发一次Minor GC，采用复制算法将Eden区的对象转移到Survivor区或者老年代(tenured)，看下面的例子：<br><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * VM: -XX:+UseSerialGC -Xms40M -Xmx40M - Xmn20M -XX:+PrintGCDetails -XX:SurvivorRatio=8</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestInvokeMinorGC</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> _1MB = <span class="number">1024</span> * <span class="number">1024</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">byte</span>[] a1 = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1</span> * _1MB];</span><br><span class="line">        <span class="keyword">byte</span>[] a2 = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">12</span> * _1MB];</span><br><span class="line">        <span class="keyword">byte</span>[] a3 = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">4</span> * _1MB];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这里的JVM参数限定了固定堆大小为40M，其中新生代20M，Eden与survior的比例为8:1，即eden=16M,survior0=2M,survior1=2M。<br>首先分配到的a1以及a2对象都能存储在eden区，在分配a3时触发了GC，将a1转移到了s0区，将a2转移到了老年代(<strong>分配担保</strong>机制)</p>
+<p>下面的GC日志中也能看出几个区所占的空间：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-11-7/70385629.jpg" alt=""></p>
+<p>####2. 大对象直接进入老年代</p>
+<blockquote>
+<p>大对象指需要大量连续内存空间的对象，典型的是长字符串或数组</p>
+</blockquote>
+<p>可以通过<code>-XX:PretenureSizeThreshold</code>来界定 <strong>大</strong> 的下限，该参数只对serial和ParNew两类收集器有效。</p>
+<p>####3. 长期存活的对象进入老年代<br>对象如果进入Survior区那么他的<strong>年龄+1</strong>，当他的年龄足够大的时候就会进入老年代。看看下面的例子：<br><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * VM: -XX:+UseSerialGC -Xms40M -Xmx40M - Xmn20M -XX:+PrintGCDetails -XX:SurvivorRatio=8</span></span><br><span class="line"><span class="comment"> * -XX:MaxTenuringThreshold=1</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestInvokeMinorGC</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> _1MB = <span class="number">1024</span> * <span class="number">1024</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">byte</span>[] a1 = <span class="keyword">new</span> <span class="keyword">byte</span>[_1MB / <span class="number">2</span>];</span><br><span class="line">        <span class="keyword">byte</span>[] a2 = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">15</span> * _1MB]; <span class="comment">// 第一次GC</span></span><br><span class="line">        <span class="keyword">byte</span>[] a3 = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">2</span> * _1MB]; <span class="comment">// 第二次GC</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>JVM参数与上例基本一致，只是定义了进入老年代的年龄下限为1.<br>在这个例子中，创建a2时触发了一次GC，a1进入S0区，创建a3时再次触发GC：</p>
+<ul>
+<li>a2由于分配担保机制进入了老年代</li>
+<li>a1由于年龄=1，也进入了老年代</li>
+</ul>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-11-7/56860266.jpg" alt=""><br>从GC日志也可以发现只有a3留在了eden区，a1,a2都进入了老年代。</p>
+<p>####4. 动态对象年龄判断<br>survior升迁到老年代并不仅仅依靠年龄判断，当survior的使用空间<strong>超过了一半</strong>，无论年龄是否达标，都会进入老年代。</p>
+<p>承接上面的例子，将a1设置为1MB的对象，并且MaxTenuringThreshold设置为10，结果如下：<br><img src="https://leanote.com/api/file/getImage?fileId=5a02e0b2ab64413281001d7e" alt=""><br>在survior中年龄为1的对象也进入了老年代。</p>
+<h2 id="第六章-类文件结构"><a href="#第六章-类文件结构" class="headerlink" title="第六章 类文件结构"></a>第六章 类文件结构</h2><blockquote>
+<p>JVM之所以被称为平台、语言无关性的平台，究其原因在于它处理的是字节码(Class类文件)，这个字节码是由java或者scala之类的语言编译而来的，因此语言无关；字节码如果解析成0、1在不同的操作系统+体系结构中执行依赖于不同的JVM类型，因此是平台无关的。</p>
+</blockquote>
+<h2 id="第七章-类加载机制"><a href="#第七章-类加载机制" class="headerlink" title="第七章 类加载机制"></a>第七章 类加载机制</h2><p>类加载的过程主要包含3步：</p>
+<ol>
+<li>加载：<br>根据类的<strong>全限定名</strong>获取字节流，将其所代表的<strong>静态存储结构</strong>转化为<code>方法区</code>的运行时数据结构，最后在内存中生成一个代表该类的Class对象</li>
+<li>连接：<ul>
+<li>验证：对Class文件的字节流进行验证，包含：<ul>
+<li>文件格式</li>
+<li>元数据</li>
+<li>字节码</li>
+<li>符号引用</li>
+</ul>
+</li>
+<li>准备：为类变量(<code>被static修饰的变量</code>)分配内存并设置初始值</li>
+<li>解析</li>
+</ul>
+</li>
+<li>初始化<br>该阶段就是执行<strong>类构造器</strong><code>&lt;client&gt;()</code>方法的过程，类构造器有以下特点：</li>
+</ol>
+<ul>
+<li>由类变量赋值语句以及static代码块合并而成，如果这些都没有的话就不会产生类构造器</li>
+<li><code>&lt;client&gt;()</code>与类的构造函数(也称为实例构造器<code>&lt;init&gt;</code>()方法)不同，不需要显式调用父类构造器。父类的<code>&lt;client&gt;()</code><strong>先执行</strong>。</li>
+<li>多线程环境下初始化一个类时，只会有一个线程执行类的<code>&lt;client&gt;()</code>方法。</li>
+</ul>
+<h2 id="第八章-字节码执行引擎"><a href="#第八章-字节码执行引擎" class="headerlink" title="第八章 字节码执行引擎"></a>第八章 字节码执行引擎</h2><h3 id="栈帧"><a href="#栈帧" class="headerlink" title="栈帧"></a>栈帧</h3><p><strong>栈帧</strong>是支持虚拟机进行方法调用和方法执行的数据结构，包含：</p>
+<ol>
+<li>局部变量表：用于存放方法参数以及方法内部的局部变量<ul>
+<li>该表中的第0号索引指向的是方法所属对象实例的引用，可以通过<code>this</code>来访问这个隐含的参数</li>
+<li>局部变量表中的空间是可重用的，如果执行到的位置已经超出某个局部变量的作用域，那么他所在的空间很可能会被其他变量重用。</li>
+<li><code>&lt;&lt;effecive Java&gt;&gt;</code>一书中也给出一个编码规则：应该及时清除废弃的引用。</li>
+<li></li>
+</ul>
+</li>
+<li>操作栈</li>
+<li>动态链接</li>
+<li>返回地址</li>
+</ol>
+<h3 id="方法调用"><a href="#方法调用" class="headerlink" title="方法调用"></a>方法调用</h3><ul>
+<li>Class文件的编译过程不包含连接过程，因此Class文件中方法调用的目标方法都是<strong>符号引用</strong>，只有在运行时才能得到<strong>直接引用</strong>(存在内存中的方法入口地址)。</li>
+<li>可以在不同的阶段获取目标方法的直接引用，包括：<strong>类加载的解析阶段</strong>以及<strong>运行阶段</strong></li>
+</ul>
+<h4 id="解析"><a href="#解析" class="headerlink" title="解析"></a>解析</h4><p>能够在解析阶段确定方法直接引用具备以下特点：</p>
+<ul>
+<li>在编译器可知，运行期不变</li>
+<li>静态方法、私有方法以及final修饰的方法在编译期都能确定他们的直接引用，因为这些方法不可能通过继承或别的方式重写。这种类型的方法统称为<strong>非虚方法</strong></li>
+</ul>
+<h4 id="重载与静态分派"><a href="#重载与静态分派" class="headerlink" title="重载与静态分派"></a><strong>重载与静态分派</strong></h4><p>如下定义中：<br><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Fruit apple = <span class="keyword">new</span> Apple();  <span class="comment">//Fruit是Apple的父类</span></span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>Fruit是变量的静态类型，这个是在编译期可知的；</li>
+<li>Apple是变量的实际类型，这个只有在运行时才可确定；</li>
+<li>在重载时，编译器根据<code>传入参数的静态类型</code>决定使用哪个重载<em>版本</em>。</li>
+<li>依赖静态类型来决定方法的执行版本的分派方式称为<strong>静态分派</strong>：<ul>
+<li>静态分派发生在<strong>编译阶段</strong></li>
+<li>在选择重载版本时有一定的优先级，如传入参数类型为char，那么在选择执行版本的时候的优先级为：<code>char &gt; int &gt; long &gt; double &gt; Character &gt; Object &gt; char...</code>  查找父类时按照从下往上的方式</li>
+</ul>
+</li>
+</ul>
+<h4 id="重写与动态分派"><a href="#重写与动态分派" class="headerlink" title="重写与动态分派"></a><strong>重写与动态分派</strong></h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DynamicDispatch</span> </span>&#123;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">Human</span> </span>&#123;</span><br><span class="line">        <span class="function"><span class="keyword">protected</span> <span class="keyword">abstract</span> <span class="keyword">void</span> <span class="title">say</span><span class="params">()</span></span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Man</span> <span class="keyword">extends</span> <span class="title">Human</span> </span>&#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">say</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            System.out.println(<span class="string">"I'm a Man"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Woman</span> <span class="keyword">extends</span> <span class="title">Human</span> </span>&#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">say</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            System.out.println(<span class="string">"I'm an Woman"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        Human woman = <span class="keyword">new</span> Woman();</span><br><span class="line">        Human man = <span class="keyword">new</span> Man();</span><br><span class="line">        man.say();   <span class="comment">// I'm a Man</span></span><br><span class="line">        woman.say(); <span class="comment">//I'm an Woman</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>观察上面main函数对应的字节码：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-11-8/5492472.jpg" alt=""><br>其中#6对应常量池的引用依然是<code>Human.say</code>：<br><figure class="highlight"><table><tr><td class="code"><pre><span class="line">#6 = Methodref          #12.#33        //DynamicDispatch$Human.say:()V</span><br></pre></td></tr></table></figure></p>
+<p>但是执行结果却是定位到<code>Man.say()</code>，这是如何做到的呢？</p>
+<p>在执行<code>man.say()</code>时：</p>
+<ul>
+<li>获取man变量对应的实际类型C</li>
+<li>调用<code>invokevirtual</code>指令，该指令根据<code>实际类型</code>将方法调用的符号引用解析到了确定类型C的直接引用上：<ul>
+<li>如果在C中能找到对应的方法，并且有<code>权限访问</code>，那么久直接返回这个方法的直接引用</li>
+<li>否则，按照继承关系从下往上查找父类来确定方法的直接引用。</li>
+</ul>
+</li>
+</ul>
+<p>以上就是重写的本质，<strong>在运行期间根据实际类型确定方法执行版本的分配过程称为动态分派</strong></p>
+<h2 id="内存模型与线程"><a href="#内存模型与线程" class="headerlink" title="内存模型与线程"></a>内存模型与线程</h2><blockquote>
+<p>为了与硬件中的主内存、高速缓存、处理器的交互关系一致，java内存模型也定义了：<strong>主内存</strong>，<strong>工作内存</strong>以及<strong>线程</strong></p>
+</blockquote>
+<ul>
+<li>所有的<strong>变量</strong>都存储在主内存中(<em>包括实例字段、静态字段和构成数组对象的元素，不包括局部变量以及方法参数。后者存放在线程的私有栈中不存在共享的问题</em>)</li>
+<li>每个线程都有自己的工作内存，工作内存中存放着主内存中变量的<strong>副本拷贝</strong></li>
+<li>线程对变量的读写操作只能在工作内存中进行，换而言之，线程操作只是主内存中变量的一个<em>影分身</em></li>
+</ul>
+<p>为了实现主内存与工作内存之间的交互，Java内存模型定义了8种原子性的操作，其中：</p>
+<ul>
+<li>从内存中复制变量到工作内存需要执行：<code>read -&gt; load</code></li>
+<li>将工作内存中的变量同步回主内存：<code>store -&gt; write</code><br>以上两步只是<strong>顺序执行</strong>，中间可允许穿插其他指令，这就是共享变量在多线程运行下可能出现结果不确定性的根源。</li>
+</ul>
+<h3 id="volatile变量与可见性"><a href="#volatile变量与可见性" class="headerlink" title="volatile变量与可见性"></a>volatile变量与可见性</h3><blockquote>
+<p>可见性：一个线程修改了共享变量的值，其他线程能够立即得知这个修改。</p>
+</blockquote>
+<p>volatile是一个特殊变量类型，它通过以下的规则提供了<strong>弱同步机制</strong>：</p>
+<ul>
+<li>在使用一个变量之前，必须执行load操作。<strong>确保使用变量时能看到主内存中最新的值</strong></li>
+<li>对变量执行了赋值操作后，必须连续执行store以及write操作。<strong>确保每次修改了变量的值立刻同步回主内存</strong></li>
+</ul>
+<p>volatile通过以上的机制保证了变量的<strong>可见性</strong>，其通常用作某个操作完成、发生中断或者状态的标记，下面是典型的例子：<br><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">volatile</span> <span class="keyword">boolean</span> shouldShutDown;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">shutDown</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    shouldShutDown = <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (shouldShutDown) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在多线程情况下，任意的线程调用shutDown方法都能正常关闭。这是因为对shutDown的赋值<strong>不依赖于当前值</strong>，而volatile的可见性确保该变量变为true时其他线程都能得知变化。</p>
+<p>之所以说volatile实现的是弱同步，在于其未实现<strong>原子性</strong>，多线程读写volatile变量的结果是未知的。</p>
+<h3 id="原子性与CAS"><a href="#原子性与CAS" class="headerlink" title="原子性与CAS"></a>原子性与CAS</h3><p><strong>synchronized</strong>代码块之间的操作是具有原子性的，除此以外，<code>java.util.concurrent.atomic</code>包提供了诸如AtomicInteger之类具有原子性操作的类，这些类的原子性并不是通过加锁实现的，而是通过CAS(Compare And Swap)实现的，在JDK 1.5之前，AtomicInteger的incrementAndGet()方法的实现是：<br><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">while</span>(<span class="keyword">true</span>) &#123;</span><br><span class="line">    next = current + <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (compareAndSet(current, next)) &#123;</span><br><span class="line">        <span class="keyword">return</span> next;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>假如有两个线程同时调用了同一个AtomicInteger对象的incrementAndGet方法，那么无论如何结果都是++2。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/02/24/Jmock探究/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1049,7 +1569,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">14</span>
+                  <span class="site-state-item-count">16</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
@@ -1062,7 +1582,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-count">8</span>
                   <span class="site-state-item-name">tags</span>
                 </a>
               </div>

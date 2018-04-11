@@ -84,7 +84,7 @@
 <meta name="description" content="人为什么越长大越孤单？ 答:内心中有秘密,无法诉说">
 <meta property="og:type" content="website">
 <meta property="og:title" content="天外飞猪的博客">
-<meta property="og:url" content="http://yoursite.com/tags/Java/index.html">
+<meta property="og:url" content="http://yoursite.com/tags/java/index.html">
 <meta property="og:site_name" content="天外飞猪的博客">
 <meta property="og:description" content="人为什么越长大越孤单？ 答:内心中有秘密,无法诉说">
 <meta property="og:locale" content="default">
@@ -120,13 +120,13 @@
 
 
 
-  <link rel="canonical" href="http://yoursite.com/tags/Java/"/>
+  <link rel="canonical" href="http://yoursite.com/tags/java/"/>
 
 
 
 
 
-  <title>Tag: Java | 天外飞猪的博客</title>
+  <title>Tag: java | 天外飞猪的博客</title>
   
 
 
@@ -236,7 +236,7 @@
 
     <div id="posts" class="posts-collapse">
       <div class="collection-title">
-        <h1>Java<small>Tag</small>
+        <h1>java<small>Tag</small>
         </h1>
       </div>
 
@@ -248,37 +248,9 @@
 
       <h2 class="post-title">
         
-            <a class="post-title-link" href="/2017/09/07/如何愉快的使用线程池/" itemprop="url">
+            <a class="post-title-link" href="/2017/02/24/《深入理解JVM》读书笔记/" itemprop="url">
               
-                <span itemprop="name">如何愉快的使用线程池</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2017-09-07T13:54:29+08:00"
-              content="2017-09-07" >
-          09-07
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2017/02/24/Jmock探究/" itemprop="url">
-              
-                <span itemprop="name">Jmock探究</span>
+                <span itemprop="name">《深入理解JVM》读书笔记</span>
               
             </a>
         
@@ -286,7 +258,7 @@
 
       <div class="post-meta">
         <time class="post-time" itemprop="dateCreated"
-              datetime="2017-02-24T15:25:40+08:00"
+              datetime="2017-02-24T15:29:04+08:00"
               content="2017-02-24" >
           02-24
         </time>
@@ -354,7 +326,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">14</span>
+                  <span class="site-state-item-count">16</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
@@ -367,7 +339,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-count">8</span>
                   <span class="site-state-item-name">tags</span>
                 </a>
               </div>
@@ -646,6 +618,64 @@
               },
               error: function(counter, error) {
                 console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
+m, with error message: ' + error.message);
               }
             });
           } else {
