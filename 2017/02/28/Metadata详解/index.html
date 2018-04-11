@@ -70,7 +70,7 @@
 
 
 
-  <meta name="keywords" content="test," />
+  <meta name="keywords" content="Kafka," />
 
 
 
@@ -81,18 +81,20 @@
 
 
 
-<meta name="description" content="this is titlethis is the second title//this is codepublic static void main(String[] args) &amp;#123;    System.out.println(&quot;hello world&quot;);&amp;#125;">
-<meta name="keywords" content="test">
+<meta name="description" content="探究org.apache.kafka.clients中Metadata的数据结构、更新及获取原理  ref Metadata是为producer及consumer服务的，在producer和consumer创建的时候都会创metadata：this.metadata = new Metadata(retryBackoffMs, config.getLong(ConsumerConfig.META">
+<meta name="keywords" content="Kafka">
 <meta property="og:type" content="article">
-<meta property="og:title" content="test_blog">
-<meta property="og:url" content="http://yoursite.com/2018/04/04/test-blog/index.html">
+<meta property="og:title" content="Metadata详解">
+<meta property="og:url" content="http://yoursite.com/2017/02/28/Metadata详解/index.html">
 <meta property="og:site_name" content="天外飞猪的博客">
-<meta property="og:description" content="this is titlethis is the second title//this is codepublic static void main(String[] args) &amp;#123;    System.out.println(&quot;hello world&quot;);&amp;#125;">
+<meta property="og:description" content="探究org.apache.kafka.clients中Metadata的数据结构、更新及获取原理  ref Metadata是为producer及consumer服务的，在producer和consumer创建的时候都会创metadata：this.metadata = new Metadata(retryBackoffMs, config.getLong(ConsumerConfig.META">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2018-04-04T07:28:05.135Z">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-2-28/87761728-file_1488267221939_ae6.png">
+<meta property="og:updated_time" content="2018-04-11T05:52:52.233Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="test_blog">
-<meta name="twitter:description" content="this is titlethis is the second title//this is codepublic static void main(String[] args) &amp;#123;    System.out.println(&quot;hello world&quot;);&amp;#125;">
+<meta name="twitter:title" content="Metadata详解">
+<meta name="twitter:description" content="探究org.apache.kafka.clients中Metadata的数据结构、更新及获取原理  ref Metadata是为producer及consumer服务的，在producer和consumer创建的时候都会创metadata：this.metadata = new Metadata(retryBackoffMs, config.getLong(ConsumerConfig.META">
+<meta name="twitter:image" content="http://olt6kofv9.bkt.clouddn.com/17-2-28/87761728-file_1488267221939_ae6.png">
 
 
 
@@ -122,13 +124,13 @@
 
 
 
-  <link rel="canonical" href="http://yoursite.com/2018/04/04/test-blog/"/>
+  <link rel="canonical" href="http://yoursite.com/2017/02/28/Metadata详解/"/>
 
 
 
 
 
-  <title>test_blog | 天外飞猪的博客</title>
+  <title>Metadata详解 | 天外飞猪的博客</title>
   
 
 
@@ -245,7 +247,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/04/test-blog/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/02/28/Metadata详解/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="fbZhu">
@@ -262,7 +264,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">test_blog</h1>
+          <h1 class="post-title" itemprop="name headline">Metadata详解</h1>
         
 
         <div class="post-meta">
@@ -274,8 +276,8 @@
               
                 <span class="post-meta-item-text">Posted on</span>
               
-              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-04-04T11:22:14+08:00">
-                2018-04-04
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-02-28T13:50:23+08:00">
+                2017-02-28
               </time>
             
 
@@ -292,7 +294,7 @@
 
           
           
-             <span id="/2018/04/04/test-blog/" class="leancloud_visitors" data-flag-title="test_blog">
+             <span id="/2017/02/28/Metadata详解/" class="leancloud_visitors" data-flag-title="Metadata详解">
                <span class="post-meta-divider">|</span>
                <span class="post-meta-item-icon">
                  <i class="fa fa-eye"></i>
@@ -323,7 +325,26 @@
       
 
       
-        <h1 id="this-is-title"><a href="#this-is-title" class="headerlink" title="this is title"></a>this is title</h1><h2 id="this-is-the-second-title"><a href="#this-is-the-second-title" class="headerlink" title="this is the second title"></a>this is the second title</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//this is code</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    System.out.println(<span class="string">"hello world"</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+        <blockquote>
+<p>探究<code>org.apache.kafka.clients</code>中Metadata的数据结构、更新及获取原理</p>
+</blockquote>
+<p><a href="http://www.infocool.net/kb/Other/201609/193278.html" target="_blank" rel="noopener">ref</a></p>
+<p><strong>Metadata</strong>是为producer及consumer服务的，在producer和consumer创建的时候都会创metadata：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">this.metadata = new Metadata(retryBackoffMs, config.getLong(ConsumerConfig.METADATA_MAX_AGE_CONFIG));</span><br><span class="line"></span><br><span class="line">this.metadata = new Metadata(retryBackoffMs, config.getLong(ProducerConfig.METADATA_MAX_AGE_CONFIG));</span><br></pre></td></tr></table></figure></p>
+<h2 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h2><ul>
+<li><strong>refreshBackoffMs</strong>：metadata的最短刷新间隔，避免频繁的Poll操作，默认100ms</li>
+<li><strong>metadataExpireMs</strong>：在下次更新前，metadata保存的最长时间，默认5min</li>
+<li><strong>version</strong>：每次更新一次metadata都会将version值增加1</li>
+<li><strong>lastRefreshMs</strong>：上次更新时间，也记录更新失败时间</li>
+<li><strong>lastSuccessfulRefreshMs</strong>：上次成功更新时间</li>
+<li><strong>cluster</strong>：记录集群中节点、partitionInfo、topic之间的关系，只是个子集，因为Metadata初始化的时候，cluster也是初始化为空的</li>
+<li><strong>listeners</strong>：自定义的接口，用于监听Metadata更新，在<code>ConsumerCoordinator</code>有使用到</li>
+<li><strong>needMetadataForAllTopics</strong>：是否需要cluster中所有topic的metadata，默认为false</li>
+</ul>
+<h2 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h2><h3 id="1-timeToNextUpdate"><a href="#1-timeToNextUpdate" class="headerlink" title="1. timeToNextUpdate"></a>1. timeToNextUpdate</h3><p>该方法用于计算下一次刷新metadata的的时间间隔(ms)<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public synchronized long timeToNextUpdate(long nowMs) &#123;</span><br><span class="line">    //距离时效还有多长时间</span><br><span class="line">    long timeToExpire = needUpdate ? 0 : Math.max(this.lastSuccessfulRefreshMs + this.metadataExpireMs - nowMs, 0);</span><br><span class="line">    //距离下一次允许刷新的时间</span><br><span class="line">    long timeToAllowUpdate = this.lastRefreshMs + this.refreshBackoffMs - nowMs;</span><br><span class="line">    return Math.max(timeToExpire, timeToAllowUpdate);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>Metadata的使用是<strong>线程安全</strong>的。</p>
+<h3 id="2-awaitUpdate"><a href="#2-awaitUpdate" class="headerlink" title="2. awaitUpdate"></a>2. awaitUpdate</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public synchronized void awaitUpdate(final int lastVersion, final long maxWaitMs) throws InterruptedException &#123;</span><br><span class="line">    ...</span><br><span class="line">    long begin = System.currentTimeMillis();</span><br><span class="line">    long remainingWaitMs = maxWaitMs;</span><br><span class="line">    /*循环等待version值超过当前version值,时间耗尽就退出*/</span><br><span class="line">    while (this.version &lt;= lastVersion) &#123;</span><br><span class="line">        if (remainingWaitMs != 0)</span><br><span class="line">            wait(remainingWaitMs);</span><br><span class="line">        long elapsed = System.currentTimeMillis() - begin;</span><br><span class="line">        if (elapsed &gt;= maxWaitMs)</span><br><span class="line">            throw new TimeoutException(&quot;Failed to update metadata after &quot; + maxWaitMs + &quot; ms.&quot;);</span><br><span class="line">        remainingWaitMs = maxWaitMs - elapsed;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="3-update"><a href="#3-update" class="headerlink" title="3. update"></a>3. update</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public synchronized void update(Cluster cluster, long now) &#123;</span><br><span class="line">    this.needUpdate = false;</span><br><span class="line">    this.lastRefreshMs = now;</span><br><span class="line">    this.lastSuccessfulRefreshMs = now;</span><br><span class="line">    this.version += 1;</span><br><span class="line">    //如果有人监听了metadata的更新，通知他们</span><br><span class="line">    for (Listener listener: listeners)</span><br><span class="line">        listener.onMetadataUpdate(cluster);  </span><br><span class="line">    </span><br><span class="line">    //新的cluster覆盖旧的cluster</span><br><span class="line">    this.cluster = this.needMetadataForAllTopics ? getClusterForCurrentTopics(cluster) : cluster;    </span><br><span class="line"></span><br><span class="line">    notifyAll();  //通知所有的阻塞的线程(调用了wait的线程)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="producer获取metadata"><a href="#producer获取metadata" class="headerlink" title="producer获取metadata"></a>producer获取metadata</h2><p>时效图如下：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-2-28/87761728-file_1488267221939_ae6.png" alt=""></p>
 
       
     </div>
@@ -341,7 +362,7 @@
       
         <div class="post-tags">
           
-            <a href="/tags/test/" rel="tag"># test</a>
+            <a href="/tags/Kafka/" rel="tag"># Kafka</a>
           
         </div>
       
@@ -354,8 +375,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2018/04/04/hello-world/" rel="next" title="Hello World">
-                <i class="fa fa-chevron-left"></i> Hello World
+              <a href="/2017/02/28/kafka producer原理梳理/" rel="next" title="kafka producer原理梳理">
+                <i class="fa fa-chevron-left"></i> kafka producer原理梳理
               </a>
             
           </div>
@@ -364,8 +385,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2018/04/04/Kafka-Coordinator实现细节/" rel="prev" title="Kafka Coordinator实现细节">
-                Kafka Coordinator实现细节 <i class="fa fa-chevron-right"></i>
+              <a href="/2017/03/01/Kafka consumer原理剖析/" rel="prev" title="Kafka consumer原理剖析">
+                Kafka consumer原理剖析 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -500,7 +521,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#this-is-title"><span class="nav-number">1.</span> <span class="nav-text">this is title</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#this-is-the-second-title"><span class="nav-number">1.1.</span> <span class="nav-text">this is the second title</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#成员变量"><span class="nav-number">1.</span> <span class="nav-text">成员变量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#方法"><span class="nav-number">2.</span> <span class="nav-text">方法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-timeToNextUpdate"><span class="nav-number">2.1.</span> <span class="nav-text">1. timeToNextUpdate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-awaitUpdate"><span class="nav-number">2.2.</span> <span class="nav-text">2. awaitUpdate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-update"><span class="nav-number">2.3.</span> <span class="nav-text">3. update</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#producer获取metadata"><span class="nav-number">3.</span> <span class="nav-text">producer获取metadata</span></a></li></ol></div>
             
 
           </div>

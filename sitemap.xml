@@ -2,6 +2,41 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://yoursite.com/2017/03/07/producer%E7%9A%84%E5%9B%9E%E8%B0%83%E5%AE%9E%E7%8E%B0/</loc>
+    
+    <lastmod>2018-04-11T05:53:29.968Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2017/02/28/kafka%20producer%E5%8E%9F%E7%90%86%E6%A2%B3%E7%90%86/</loc>
+    
+    <lastmod>2018-04-11T05:53:16.280Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2017/04/01/SocketServer%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/</loc>
+    
+    <lastmod>2018-04-11T05:53:01.744Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2017/02/28/Metadata%E8%AF%A6%E8%A7%A3/</loc>
+    
+    <lastmod>2018-04-11T05:52:52.233Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2017/03/01/Kafka%20consumer%E5%8E%9F%E7%90%86%E5%89%96%E6%9E%90/</loc>
+    
+    <lastmod>2018-04-11T05:52:41.130Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>http://yoursite.com/2017/04/28/Controller%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/</loc>
     
     <lastmod>2018-04-11T05:51:20.688Z</lastmod>

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="google-site-verification" content="bxXYqd7tQuaxEZXTyg2jG5HJvQhRp0bpb5KzceDpPsU" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Kafka," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="kafka的socket server是基于java NIO,使用Reactor模式开发的。socketserver主要用于处理kafka server对外提交网络请求的操作,用于检查连接数,把请求添加到请求的队列中,对KafkaApis提供操作支持.  其线程模型为：  一个Acceptor线程接受/处理所有的新连接 N个Processor线程,每个Processor都有自己的selector">
+<meta name="keywords" content="Kafka">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SocketServer工作原理">
+<meta property="og:url" content="http://yoursite.com/2017/04/01/SocketServer工作原理/index.html">
+<meta property="og:site_name" content="天外飞猪的博客">
+<meta property="og:description" content="kafka的socket server是基于java NIO,使用Reactor模式开发的。socketserver主要用于处理kafka server对外提交网络请求的操作,用于检查连接数,把请求添加到请求的队列中,对KafkaApis提供操作支持.  其线程模型为：  一个Acceptor线程接受/处理所有的新连接 N个Processor线程,每个Processor都有自己的selector">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-3-30/36381884-file_1490844340908_13db4.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-3-30/94490923-file_1490860792124_8fc3.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-1/72599292-file_1491031322900_42ac.png">
+<meta property="og:updated_time" content="2018-04-11T05:53:01.744Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SocketServer工作原理">
+<meta name="twitter:description" content="kafka的socket server是基于java NIO,使用Reactor模式开发的。socketserver主要用于处理kafka server对外提交网络请求的操作,用于检查连接数,把请求添加到请求的队列中,对KafkaApis提供操作支持.  其线程模型为：  一个Acceptor线程接受/处理所有的新连接 N个Processor线程,每个Processor都有自己的selector">
+<meta name="twitter:image" content="http://olt6kofv9.bkt.clouddn.com/17-3-30/36381884-file_1490844340908_13db4.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2017/04/01/SocketServer工作原理/"/>
+
+
+
+
+
+  <title>SocketServer工作原理 | 天外飞猪的博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">天外飞猪的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            Tags
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/04/01/SocketServer工作原理/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">SocketServer工作原理</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-04-01T16:33:36+08:00">
+                2017-04-01
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2017/04/01/SocketServer工作原理/" class="leancloud_visitors" data-flag-title="SocketServer工作原理">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>kafka的socket server是基于java NIO,使用<code>Reactor</code>模式开发的。socketserver主要用于处理kafka server对外提交网络请求的操作,用于检查连接数,把请求添加到请求的队列中,对KafkaApis提供操作支持.</p>
+</blockquote>
+<p>其线程模型为：</p>
+<ul>
+<li>一个Acceptor线程接受/处理所有的新连接</li>
+<li>N个Processor线程,每个Processor都有自己的selector,从每个连接中读取请求。数量由<code>num.network.threads</code>控制，默认为3</li>
+<li>M个Handler线程处理请求,并将产生的请求返回给Processor线程用于写回客户端。数量由<code>queued.max.requests</code>控制，默认为500</li>
+</ul>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-3-30/36381884-file_1490844340908_13db4.png" alt=""></p>
+<h1 id="Acceptor"><a href="#Acceptor" class="headerlink" title="Acceptor"></a>Acceptor</h1><p><del>每个broker只有一个acceptor进程</del>每个<code>endPoint</code>(由server.properties中的<code>listeners</code>定义)对应一个Acceptor，采用轮询的方式来处理新的连接，步骤如下：</p>
+<h2 id="1-新建ServerSocketChannel"><a href="#1-新建ServerSocketChannel" class="headerlink" title="1. 新建ServerSocketChannel"></a><strong>1. 新建ServerSocketChannel</strong></h2><p>使用endPoint的<code>ip:port</code><strong>strong text</strong>作为channel监听的socket地址：<br><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> serverChannel = <span class="type">ServerSocketChannel</span>.open()</span><br><span class="line">serverChannel.configureBlocking(<span class="literal">false</span>)</span><br><span class="line"><span class="keyword">if</span> (recvBufferSize != <span class="type">Selectable</span>.<span class="type">USE_DEFAULT_BUFFER_SIZE</span>)</span><br><span class="line">  serverChannel.socket().setReceiveBufferSize(recvBufferSize)</span><br><span class="line">serverChannel.socket.bind(socketAddress)</span><br></pre></td></tr></table></figure></p>
+<p>recvBufferSize的大小由<code>socket.receive.buffer.bytes</code>控制，默认是100KB，目前生产环境上配置的是1MB</p>
+<h2 id="2-selector绑定channel，开始工作"><a href="#2-selector绑定channel，开始工作" class="headerlink" title="2. selector绑定channel，开始工作"></a><strong>2. selector绑定channel，开始工作</strong></h2><ul>
+<li><p>首先注册一个OP_ACCEPT事件<br><code>serverChannel.register(selector, SelectionKey.OP_ACCEPT)</code></p>
+</li>
+<li><p>等待客户端的连接<br><code>val ready = nioSelector.select(500)</code></p>
+</li>
+<li><p>采用Round Robin的方式将连接分配给processor进行处理</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">if(ready &gt; 0) &#123;</span><br><span class="line">    val keys = selector.selectedKeys()</span><br><span class="line">    val iter = keys.iterator()</span><br><span class="line">    while(iter.hasNext &amp;&amp; isRunning) &#123;</span><br><span class="line">      var key: SelectionKey = null</span><br><span class="line">      key = iter.next</span><br><span class="line">      iter.remove()</span><br><span class="line">      if(key.isAcceptable)</span><br><span class="line">        accept(key, processors(currentProcessor))</span><br><span class="line"></span><br><span class="line">      // round robin to the next processor thread</span><br><span class="line">      currentProcessor = (currentProcessor + 1) % processors.length</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>接受客户端的连接，并将获得的SocketChannel交给processor</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def accept(key: SelectionKey, processor: Processor) &#123;</span><br><span class="line">  //根据SelectionKey获取对应的serverSocketChannel</span><br><span class="line">  val serverSocketChannel = key.channel().asInstanceOf[ServerSocketChannel]</span><br><span class="line">  //调用accept方法建立与客户端的连接</span><br><span class="line">  val socketChannel = serverSocketChannel.accept()</span><br><span class="line">  socketChannel.configureBlocking(false)</span><br><span class="line">  socketChannel.socket().setTcpNoDelay(true)</span><br><span class="line">  socketChannel.socket().setSendBufferSize(sendBufferSize)</span><br><span class="line"></span><br><span class="line">  processor.accept(socketChannel)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>sendBufferSize由<code>socket.send.buffer.bytes</code>控制</p>
+<p>至此，Acceptor的工作就完成了，接下来处理下一个连接请求。<br><img src="http://olt6kofv9.bkt.clouddn.com/17-3-30/94490923-file_1490860792124_8fc3.png" alt=""></p>
+<h1 id="Processor"><a href="#Processor" class="headerlink" title="Processor"></a>Processor</h1><p>Processor有两个重要的概念：</p>
+<ul>
+<li>newConnections：Processor在新收到一个从Acceptor转发过来的SocketChannel时先存放到该链表中，在运行时从链表中拿出一个Channel与客户端的ID(<em>这个ID由本地ip:port+远程ip:port构造</em>)进行绑定，并注册<code>OP_READ</code></li>
+<li>inflightResponses：用于存放正在发送或者等待发送的服务器响应报文，如果成功发送了就移除掉</li>
+</ul>
+<blockquote>
+<p>processor的运行模式跟客户端的NetworkClient相似<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">while(isRunning)&#123;</span><br><span class="line">    configureNewConnections()</span><br><span class="line">    processNewResponses()</span><br><span class="line">    poll()</span><br><span class="line">    processCompletedReceives()</span><br><span class="line">    processCompletedSends()</span><br><span class="line">    processDisconnected()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+</blockquote>
+<p>其中Selector的poll方法是跟客户端共用的。</p>
+<h2 id="processCompletedReceives"><a href="#processCompletedReceives" class="headerlink" title="processCompletedReceives"></a><strong>processCompletedReceives</strong></h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private def processCompletedReceives() &#123;</span><br><span class="line">    selector.completedReceives.asScala.foreach &#123; receive =&gt;</span><br><span class="line">        val openChannel = selector.channel(receive.source)</span><br><span class="line">        val session = &#123;</span><br><span class="line">          val channel = if (openChannel != null) openChannel else selector.closingChannel(receive.source)</span><br><span class="line">          RequestChannel.Session(new KafkaPrincipal(KafkaPrincipal.USER_TYPE, channel.principal.getName), channel.socketAddress)</span><br><span class="line">        &#125;</span><br><span class="line">        val req = RequestChannel.Request(processor = id, connectionId = receive.source, session = session,</span><br><span class="line">          buffer = receive.payload, startTimeMs = time.milliseconds, listenerName = listenerName,</span><br><span class="line">          securityProtocol = securityProtocol)</span><br><span class="line">        requestChannel.sendRequest(req)</span><br><span class="line">        selector.mute(receive.source)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>completedReceives</code>中存放的是客户端的请求(NetworkReceive)</li>
+<li>receive.source指的是客户端ID</li>
+<li>selector的mute操作会将取消对应channel的<code>OP_READ</code>注册，这一点与客户端不同，client在与server建立连接后，channel上的<code>OP_READ</code>状态会一直保持着，因为client无法预知server的数据会在什么时候到来。而server则是在建立连接后，注册<code>OP_READ</code>，在收到client的请求后取消读。</li>
+<li>server根据收到的请求，组建了一个响应的包,然后放到了<code>requestChannel</code>中。</li>
+</ul>
+<h2 id="processCompletedSends"><a href="#processCompletedSends" class="headerlink" title="processCompletedSends"></a><strong>processCompletedSends</strong></h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private def processCompletedSends() &#123;</span><br><span class="line">    selector.completedSends.asScala.foreach &#123; send =&gt;</span><br><span class="line">      val resp = inflightResponses.remove(send.destination).getOrElse &#123;</span><br><span class="line">        throw new IllegalStateException(s&quot;Send for $&#123;send.destination&#125; completed, but not in `inflightResponses`&quot;)</span><br><span class="line">      &#125;</span><br><span class="line">      resp.request.updateRequestMetrics()</span><br><span class="line">      selector.unmute(send.destination)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>completedSends</code>存放的是已经成功发送的响应，因此需要将其从<em>inflightResponses</em>中移除</li>
+<li><em>selector.unmute</em>方法能将channel注册<code>OP_READ</code></li>
+</ul>
+<p><strong>那么问题来了：放到<em>requestChannel</em>中的request和response是如何被处理的呢？</strong></p>
+<p>我们先来看下<code>requestChannel</code>：<br>每个服务端只存在一个<em>RequestChannel</em>，用于连接Processor与Handler，他定义了两个阻塞队列：</p>
+<ul>
+<li>requestQueue：缓存服务端发送的request，大小为<code>queued.max.requests</code></li>
+<li>responseQueues：每个processor都有一个队列<br><img src="http://olt6kofv9.bkt.clouddn.com/17-4-1/72599292-file_1491031322900_42ac.png" alt=""></li>
+</ul>
+<h1 id="KafkaRequestHandler"><a href="#KafkaRequestHandler" class="headerlink" title="KafkaRequestHandler"></a><strong>KafkaRequestHandler</strong></h1><p>SocketServer在初始化阶段会创建一个Handler的线程池：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">requestHandlerPool = new KafkaRequestHandlerPool(config.brokerId, socketServer.requestChannel, apis, time,</span><br><span class="line">          config.numIoThreads)</span><br></pre></td></tr></table></figure></p>
+<p>KafkaRequestHandler的数量由<code>num.io.threads</code>控制，默认为8。<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">val runnables = new Array[KafkaRequestHandler](numThreads)</span><br><span class="line">for(i &lt;- 0 until numThreads) &#123;</span><br><span class="line">  runnables(i) = new KafkaRequestHandler(i, brokerId, aggregateIdleMeter, numThreads, requestChannel, apis, time)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>他的run方法也非常简单，就是从RequestChannel中获取request，然后调用<em>KafkaApis</em>对请求进行处理：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">req = requestChannel.receiveRequest(300)</span><br><span class="line">apis.handle(req)</span><br></pre></td></tr></table></figure></p>
+<p><em>KafkaApis</em>在处理完成后，会调用<code>sendResponse</code>方法。</p>
+<h2 id="ChannelBuilders"><a href="#ChannelBuilders" class="headerlink" title="ChannelBuilders"></a>ChannelBuilders</h2><p>SocketServer中的<code>selector</code>初始化过程：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private val selector = new KSelector(</span><br><span class="line">  maxRequestSize,</span><br><span class="line">  connectionsMaxIdleMs,</span><br><span class="line">  metrics,</span><br><span class="line">  time,</span><br><span class="line">  &quot;socket-server&quot;,</span><br><span class="line">  metricTags,</span><br><span class="line">  false,</span><br><span class="line">  ChannelBuilders.create(protocol, Mode.SERVER, LoginType.SERVER, channelConfigs, null, true))</span><br></pre></td></tr></table></figure></p>
+<p>其中ChannelBuilders是根据安全策略来创建<code>KafkaChannel</code>的</p>
+<h3 id="create-channel-using-protocole"><a href="#create-channel-using-protocole" class="headerlink" title="create channel using protocole"></a>create channel using protocole</h3><p>首先来看下第一个参数：<code>protocol</code>，该参数是由socketServer初始化时创建Processor的时候根据<code>EndPoint</code>中声明的protocolType决定的：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">endpoints.values.foreach &#123; endpoint =&gt;</span><br><span class="line">  val protocol = endpoint.protocolType</span><br><span class="line">  val processorEndIndex = processorBeginIndex + numProcessorThreads</span><br><span class="line"></span><br><span class="line">  for (i &lt;- processorBeginIndex until processorEndIndex)</span><br><span class="line">    processors(i) = newProcessor(i, connectionQuotas, protocol)</span><br></pre></td></tr></table></figure></p>
+<p>如这个<code>listeners=PLAINTEXT://10.45.4.9:9093,SASL_PLAINTEXT://10.45.4.9:9094</code>定义了两个EndPoint：第一个endpoint的protocol是PLAINTEXT即明文无安全验证，第二个是使用SASL_PLAINTEXT安全验证的。每个endpoint都会创建一定数量(由<code>num.network.threads</code>控制)的processor。</p>
+<p>下面再来看看创建Channel的主要逻辑：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">switch (securityProtocol) &#123;</span><br><span class="line">    case SSL:</span><br><span class="line">        ...</span><br><span class="line">    case SASL_SSL:</span><br><span class="line">    case SASL_PLAINTEXT:</span><br><span class="line">        requireNonNullMode(mode, securityProtocol);</span><br><span class="line">        if (loginType == null)</span><br><span class="line">            throw new IllegalArgumentException(&quot;`loginType` must be non-null if `securityProtocol` is `&quot; + securityProtocol + &quot;`&quot;);</span><br><span class="line">        if (mode == Mode.CLIENT &amp;&amp; clientSaslMechanism == null)</span><br><span class="line">            throw new IllegalArgumentException(&quot;`clientSaslMechanism` must be non-null in client mode if `securityProtocol` is `&quot; + securityProtocol + &quot;`&quot;);</span><br><span class="line">        channelBuilder = new SaslChannelBuilder(mode, loginType, securityProtocol, clientSaslMechanism, saslHandshakeRequestEnable);</span><br><span class="line">        break;</span><br><span class="line">    case PLAINTEXT:</span><br><span class="line">        channelBuilder = new PlaintextChannelBuilder();</span><br><span class="line">        break;</span><br><span class="line">    default:</span><br><span class="line">        throw new IllegalArgumentException(&quot;Unexpected securityProtocol &quot; + securityProtocol);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这里主要关心的是SASL_PLAINTEXT以及PLAINTEXT的处理。</p>
+<p>当<strong>security.protocol=SASL_PLAINTEXT时Client端创建的Channel中的saslMechanism不能为空</strong>。可以看到上面socketServer创建Channel时传过来的saslMechanism字段为空。我们再来看看producer/consumer创建Channel时的代码：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">String clientSaslMechanism = (String) configs.get(SaslConfigs.SASL_MECHANISM);</span><br><span class="line">return ChannelBuilders.create(securityProtocol, Mode.CLIENT, LoginType.CLIENT, configs, clientSaslMechanism, true);</span><br></pre></td></tr></table></figure></p>
+<p>客户端<code>sasl.mechanism</code>默认值为GSSAPI。KafkaChannel构造函数包含四个属性： </p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private final String id;</span><br><span class="line">private final TransportLayer transportLayer;</span><br><span class="line">private final Authenticator authenticator;</span><br><span class="line">private final int maxReceiveSize;</span><br></pre></td></tr></table></figure>
+<p>当security.protocol=SASL_PLAINTEXT || PLAINTEXT时，用的都是<code>PlaintextTransportLayer</code>，该类中包含一个Principal：<code>ANONYMOUS</code>，如果kafka开启了权限控制，那么当不安全(security.protocol=PLAINTEXT)的client连接不安全的endpoint时需要为<code>ANONYMOUS</code>用户分配访问权限。<br>Channel的验证工具有两种对应于client和server</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Note left of SaslClient: SEND_HANDSHAKE_REQUEST</span><br><span class="line">Note right of SaslServer: HANDSHAKE_REQUEST</span><br><span class="line">SaslClient-&gt;SaslServer: SaslHandshakeRequest (ApiVersion=*,correlationId=*,clientMechanism=*)</span><br><span class="line">Note left of SaslClient: RECEIVE_HANDSHAKE_RESPONSE</span><br><span class="line">Note left of SaslServer: check clientMechanism is enabled</span><br><span class="line">SaslServer-&gt;SaslClient: SaslHandshakeResponse</span><br><span class="line">Note right of SaslClient: check error code in response</span><br><span class="line">Note left of SaslClient: FAILED or INITAL</span><br><span class="line">Note right of SaslServer: AUTHENICATE</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2017/03/07/producer的回调实现/" rel="next" title="producer的回调实现">
+                <i class="fa fa-chevron-left"></i> producer的回调实现
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2017/04/24/ISR消息管理/" rel="prev" title="ISR消息管理">
+                ISR消息管理 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC8zNTQ1NC8xMTk5MA"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg"
+                alt="fbZhu" />
+            
+              <p class="site-author-name" itemprop="name">fbZhu</p>
+              <p class="site-description motion-element" itemprop="description">人为什么越长大越孤单？
+答:内心中有秘密,无法诉说
+</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">11</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Acceptor"><span class="nav-number">1.</span> <span class="nav-text">Acceptor</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-新建ServerSocketChannel"><span class="nav-number">1.1.</span> <span class="nav-text">1. 新建ServerSocketChannel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-selector绑定channel，开始工作"><span class="nav-number">1.2.</span> <span class="nav-text">2. selector绑定channel，开始工作</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Processor"><span class="nav-number">2.</span> <span class="nav-text">Processor</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#processCompletedReceives"><span class="nav-number">2.1.</span> <span class="nav-text">processCompletedReceives</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#processCompletedSends"><span class="nav-number">2.2.</span> <span class="nav-text">processCompletedSends</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#KafkaRequestHandler"><span class="nav-number">3.</span> <span class="nav-text">KafkaRequestHandler</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ChannelBuilders"><span class="nav-number">3.1.</span> <span class="nav-text">ChannelBuilders</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#create-channel-using-protocole"><span class="nav-number">3.1.1.</span> <span class="nav-text">create channel using protocole</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fbZhu</span>
+
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/three.min.js"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/canvas_sphere.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.4.js"></script>
+  <script>AV.initialize("cea0JXdngKbekqyUcytEll8T-gzGzoHsz", "4K0JxrNpvBK8dDrqbkSm4axL");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

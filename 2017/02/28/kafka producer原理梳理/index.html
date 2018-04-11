@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="google-site-verification" content="bxXYqd7tQuaxEZXTyg2jG5HJvQhRp0bpb5KzceDpPsU" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Kafka," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="从Kafka 0.8.2开始，发布了一套新的Java版的client api,KafkaProducer/KafkaConsumer，替代之前的scala版的api。  REFKafka： Producer （0.10.0.0）Kafka源码分析 Producer客户端(超详细) 重要配置项说明 linger.ms：这是在send的过程中人为设置的一个delay，目的是将尽可能多的消息放到一个b">
+<meta name="keywords" content="Kafka">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kafka producer原理梳理">
+<meta property="og:url" content="http://yoursite.com/2017/02/28/kafka producer原理梳理/index.html">
+<meta property="og:site_name" content="天外飞猪的博客">
+<meta property="og:description" content="从Kafka 0.8.2开始，发布了一套新的Java版的client api,KafkaProducer/KafkaConsumer，替代之前的scala版的api。  REFKafka： Producer （0.10.0.0）Kafka源码分析 Producer客户端(超详细) 重要配置项说明 linger.ms：这是在send的过程中人为设置的一个delay，目的是将尽可能多的消息放到一个b">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-2-28/40268432-file_1488251405318_1788.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-2-28/52021352-file_1488270232713_806f.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-3-31/23719513-file_1490945791482_3bd2.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-3-31/97086564-file_1490947904242_8bca.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-2-28/39987736-file_1488277489550_937d.png">
+<meta property="og:updated_time" content="2018-04-11T05:53:16.280Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="kafka producer原理梳理">
+<meta name="twitter:description" content="从Kafka 0.8.2开始，发布了一套新的Java版的client api,KafkaProducer/KafkaConsumer，替代之前的scala版的api。  REFKafka： Producer （0.10.0.0）Kafka源码分析 Producer客户端(超详细) 重要配置项说明 linger.ms：这是在send的过程中人为设置的一个delay，目的是将尽可能多的消息放到一个b">
+<meta name="twitter:image" content="http://olt6kofv9.bkt.clouddn.com/17-2-28/40268432-file_1488251405318_1788.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2017/02/28/kafka producer原理梳理/"/>
+
+
+
+
+
+  <title>kafka producer原理梳理 | 天外飞猪的博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">天外飞猪的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            Tags
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/02/28/kafka producer原理梳理/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">kafka producer原理梳理</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-02-28T10:22:00+08:00">
+                2017-02-28
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2017/02/28/kafka producer原理梳理/" class="leancloud_visitors" data-flag-title="kafka producer原理梳理">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>从Kafka 0.8.2开始，发布了一套新的Java版的client api,KafkaProducer/KafkaConsumer，替代之前的scala版的api。</p>
+</blockquote>
+<h2 id="REF"><a href="#REF" class="headerlink" title="REF"></a>REF</h2><p><a href="http://www.infocool.net/kb/OtherCloud/201611/212499.html" target="_blank" rel="noopener">Kafka： Producer （0.10.0.0）</a><br><a href="http://zqhxuyuan.github.io/2016/01/06/2016-01-06-Kafka_Producer/" target="_blank" rel="noopener">Kafka源码分析 Producer客户端(超详细)</a></p>
+<h2 id="重要配置项说明"><a href="#重要配置项说明" class="headerlink" title="重要配置项说明"></a>重要配置项说明</h2><ul>
+<li><strong>linger.ms</strong>：这是在send的过程中人为设置的一个delay，目的是将尽可能多的消息放到一个batch中，这样能减少发送的次数；</li>
+<li><strong>max.block.ms</strong>：如果buffer满了或者无法获取到metadata，那么将阻塞KafkaProducer.send()与partitionFor()这两个方法，为了防止无限等待，这里设置了一个最长等待时间,默认为60s,超出这个时间的消息就不会被发送了；</li>
+<li><strong>request.timeout.ms</strong>：连接超时时间，设置为30s；</li>
+</ul>
+<h2 id="send"><a href="#send" class="headerlink" title="send"></a>send</h2><p>下面是KafkaProducer执行send操作的时序图：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-2-28/40268432-file_1488251405318_1788.png" alt=""><br>采用的是一种<strong>Non-block</strong>的工作方式，提供一个callback,调用send后，可以继续发送消息而不用等待。当有结果返回时，callback会被自动通知执行。<br><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> Future&lt;RecordMetadata&gt; <span class="title">doSend</span><span class="params">(ProducerRecord&lt;K, V&gt; record, Callback callback)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// first make sure the metadata for the topic is available</span></span><br><span class="line">    <span class="keyword">long</span> waitedOnMetadataMs = waitOnMetadata(record.topic(), <span class="keyword">this</span>.maxBlockTimeMs);</span><br><span class="line">    <span class="keyword">long</span> remainingWaitMs = Math.max(<span class="number">0</span>, <span class="keyword">this</span>.maxBlockTimeMs - waitedOnMetadataMs);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 序列化key和value</span></span><br><span class="line">    <span class="keyword">byte</span>[] serializedKey= keySerializer.serialize(record.topic(), record.key());</span><br><span class="line">    <span class="keyword">byte</span>[] serializedValue = valueSerializer.serialize(record.topic(), record.value());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 根据key选择Partition</span></span><br><span class="line">    <span class="keyword">int</span> partition = partition(record, serializedKey, serializedValue, metadata.fetch());</span><br><span class="line">    TopicPartition tp = <span class="keyword">new</span> TopicPartition(record.topic(), partition);</span><br><span class="line">    RecordAccumulator.RecordAppendResult result = accumulator.append(tp, serializedKey, serializedValue, callback, remainingWaitMs);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 在每次追加一条消息到收集器之后,都要判断是否满了.如果满了,就执行一次Sender操作,通知Sender将这批数据发送到Kafka</span></span><br><span class="line">    <span class="keyword">if</span> (result.batchIsFull || result.newBatchCreated) <span class="keyword">this</span>.sender.wakeup();</span><br><span class="line">    <span class="keyword">return</span> result.future;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="RecordAccumulator"><a href="#RecordAccumulator" class="headerlink" title="RecordAccumulator"></a>RecordAccumulator</h2><p>kafka消息的异步发送是依靠消息缓存实现的，RecordAccumulator扮演的就是这个角色，它创建了一个<code>ConcurrentMap&lt;TopicPartition, Deque&lt;RecordBatch&gt;&gt;</code>类型的缓存结构，每条消息会被放到对应的双端队列中。<br><img src="http://olt6kofv9.bkt.clouddn.com/17-2-28/52021352-file_1488270232713_806f.png" alt=""></p>
+<h3 id="append"><a href="#append" class="headerlink" title="append"></a>append</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public RecordAppendResult append(TopicPartition tp,</span><br><span class="line">                                     long timestamp,</span><br><span class="line">                                     byte[] key,</span><br><span class="line">                                     byte[] value,</span><br><span class="line">                                     Callback callback,</span><br><span class="line">                                     long maxTimeToBlock) throws InterruptedException &#123;</span><br><span class="line">    //用于记录当前等待处理的batch数量</span><br><span class="line">    appendsInProgress.incrementAndGet();</span><br><span class="line">    try &#123;</span><br><span class="line">        // 有可用的dq就试着将消息入队</span><br><span class="line">        Deque&lt;RecordBatch&gt; dq = getOrCreateDeque(tp);</span><br><span class="line">        synchronized (dq) &#123;</span><br><span class="line">            RecordBatch last = dq.peekLast();</span><br><span class="line">            if (last != null) &#123;</span><br><span class="line">                FutureRecordMetadata future = last.tryAppend(timestamp, key, value, callback, time.milliseconds());</span><br><span class="line">                if (future != null) return new RecordAppendResult(future, dq.size() &gt; 1 || last.records.isFull(), false);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // 无法放到之前的dq，那么就分配空间然后创建dq</span><br><span class="line">        int size = Math.max(this.batchSize, Records.LOG_OVERHEAD + Record.recordSize(key, value));</span><br><span class="line">        ByteBuffer buffer = free.allocate(size, maxTimeToBlock);</span><br><span class="line">        synchronized (dq) &#123;</span><br><span class="line">            MemoryRecords records = MemoryRecords.emptyRecords(buffer, compression, this.batchSize);</span><br><span class="line">            RecordBatch batch = new RecordBatch(tp, records, time.milliseconds());</span><br><span class="line">            FutureRecordMetadata future = Utils.notNull(batch.tryAppend(timestamp, key, value, callback, time.milliseconds()));</span><br><span class="line"></span><br><span class="line">            dq.addLast(batch);</span><br><span class="line">            incomplete.add(batch);</span><br><span class="line">            return new RecordAppendResult(future, dq.size() &gt; 1 || batch.records.isFull(), true);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; finally &#123;</span><br><span class="line">        appendsInProgress.decrementAndGet();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<ul>
+<li>为了实现并发，对每个队列的操作都放在同步块中操作</li>
+<li>新创建了一个RecordBatch，或者当前的RecordBatch的buffer被填满了，那么就可以<em>发车</em> (唤醒Sender)了</li>
+</ul>
+</blockquote>
+<h3 id="ready"><a href="#ready" class="headerlink" title="ready"></a>ready</h3><blockquote>
+<p>找出每个topic-partition对应的leader，并判断发送条件是否成熟<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public ReadyCheckResult ready(Cluster cluster, long nowMs) &#123;</span><br><span class="line">    Set&lt;Node&gt; readyNodes = new HashSet&lt;Node&gt;();</span><br><span class="line"></span><br><span class="line">    for (Map.Entry&lt;TopicPartition, Deque&lt;RecordBatch&gt;&gt; entry : this.batches.entrySet()) &#123;</span><br><span class="line">        TopicPartition part = entry.getKey();</span><br><span class="line">        Deque&lt;RecordBatch&gt; deque = entry.getValue();</span><br><span class="line">        </span><br><span class="line">        Node leader = cluster.leaderFor(part);</span><br><span class="line">        if (leader == null) &#123;</span><br><span class="line">            unknownLeadersExist = true;</span><br><span class="line">        &#125; else if (!readyNodes.contains(leader) &amp;&amp; !muted.contains(part)) &#123;</span><br><span class="line">            synchronized (deque) &#123;</span><br><span class="line">                RecordBatch batch = deque.peekFirst();</span><br><span class="line">                if (batch != null) &#123;</span><br><span class="line">                    ...</span><br><span class="line">                    boolean sendable = full || expired || exhausted || closed || flushInProgress();</span><br><span class="line">                    if (sendable &amp;&amp; !backingOff) &#123;</span><br><span class="line">                        readyNodes.add(leader);</span><br><span class="line">                    &#125; else &#123;</span><br><span class="line">                        nextReadyCheckDelayMs = Math.min(timeLeftMs, nextReadyCheckDelayMs);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    return new ReadyCheckResult(readyNodes, nextReadyCheckDelayMs, unknownLeadersExist);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+</blockquote>
+<h3 id="drain"><a href="#drain" class="headerlink" title="drain"></a>drain</h3><blockquote>
+<p>在ready环节已经找出所有的ready nodes，那么接下来就将batchs中的RecordBatch按照node进行分组，方便后续的发送</p>
+</blockquote>
+<h2 id="Request-amp-amp-Response"><a href="#Request-amp-amp-Response" class="headerlink" title="Request &amp;&amp; Response"></a>Request &amp;&amp; Response</h2><blockquote>
+<p>下面要探究的是如何将RecordBatch转换成server端能理解的请求，以及收到server的响应后如何进行处理。</p>
+</blockquote>
+<ul>
+<li>首先，将发往相同broker、topic-partition的RecordBatch组成一个ProduceRequest</li>
+<li>根据ProduceRequest进而组成一个用于发送的RequestSend</li>
+<li>在<code>handleProduceResponse</code>方法中实现了对ClientResponse的处理，在这里会对batch做done操作，细节在producer回调中有阐述。</li>
+<li>根据上面的处理方法实现了回调方法，进而完成了<code>ClientRequest</code>的组建工作</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ProduceRequest request = new ProduceRequest(acks, timeout, produceRecordsByPartition);</span><br><span class="line">RequestSend send = new RequestSend(Integer.toString(destination),</span><br><span class="line">                                   this.client.nextRequestHeader(ApiKeys.PRODUCE),</span><br><span class="line">                                   request.toStruct());</span><br><span class="line">RequestCompletionHandler callback = new RequestCompletionHandler() &#123;</span><br><span class="line">    public void onComplete(ClientResponse response) &#123;</span><br><span class="line">        handleProduceResponse(response, recordsByPartition, time.milliseconds());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">return new ClientRequest(now, acks != 0, send, callback);</span><br></pre></td></tr></table></figure>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-3-31/23719513-file_1490945791482_3bd2.png" alt=""><br>回调函数是在NetworkClient层被调用的，具体的是<code>client.poll()</code>中：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">for (ClientResponse response : responses) &#123;</span><br><span class="line">    if (response.request().hasCallback()) &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            response.request().callback().onComplete(response);</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            log.error(&quot;Uncaught error in request completion:&quot;, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="NetworkClient"><a href="#NetworkClient" class="headerlink" title="NetworkClient"></a>NetworkClient</h2><blockquote>
+<p>NetworkClient是kafka客户端实现网络连接、数据读写的。是通过Java NIO实现的，并且实现了自己的Selector与KafkaChannel</p>
+</blockquote>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-3-31/97086564-file_1490947904242_8bca.png" alt=""></p>
+<h3 id="连接"><a href="#连接" class="headerlink" title="连接"></a><strong>连接</strong></h3><p>在Sender的run方法中创建ClientRequest之前需要先筛选出可连接的节点，这里调用的是NetworkClient的ready方法：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">if (connectionStates.canConnect(node.idString(), now))</span><br><span class="line">    initiateConnect(node, now);</span><br></pre></td></tr></table></figure></p>
+<p>然后调用Selector的connect方法：</p>
+<ul>
+<li><p>开启一个SocketChannel</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SocketChannel socketChannel = SocketChannel.open();</span><br><span class="line">socketChannel.configureBlocking(false);</span><br><span class="line">Socket socket = socketChannel.socket();</span><br><span class="line">socket.setKeepAlive(true);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将创建的Channel注册在nioSelector上，监听事件为：<code>OP_CONNECT</code></p>
+</li>
+<li>创建KafkaChannel,并与brokerId绑定<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">KafkaChannel channel = channelBuilder.buildChannel(id, key, maxReceiveSize);</span><br><span class="line">    key.attach(channel);</span><br><span class="line">    this.channels.put(id, channel);</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<blockquote>
+<p>因为实现的是非阻塞模式的，因此connect方法在连接成功建立之前就会返回的。为了确保连接成功，需要调用KafkaChannel的finishConnect方法</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public boolean finishConnect() throws IOException &#123;</span><br><span class="line">    boolean connected = socketChannel.finishConnect();</span><br><span class="line">    if (connected)</span><br><span class="line">        key.interestOps(key.interestOps() &amp; ~SelectionKey.OP_CONNECT | SelectionKey.OP_READ);</span><br><span class="line">    return connected;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在连接成功后就注册了<code>OP_READ</code>。为什么不在发送请求的时候注册嘞，因为一来响应什么时候到我们是无法预料的，二来有些请求并不要求响应。</p>
+<h3 id="发送"><a href="#发送" class="headerlink" title="发送"></a><strong>发送</strong></h3><p>在组建完ClientRequest后，要调用Selector的send操作，被发送的主体是<code>RequestSend</code>：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public void send(Send send) &#123;</span><br><span class="line">    KafkaChannel channel = channelOrFail(send.destination());</span><br><span class="line">    channel.setSend(send);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private KafkaChannel channelOrFail(String id) &#123;</span><br><span class="line">        KafkaChannel channel = this.channels.get(id);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>需要注意的是：</p>
+<ul>
+<li>每个KafkaChannel上只有一个RequestSend，无法加塞，必须在之前的被发送掉后才能上车</li>
+<li>setSend的操作会注册<code>OP_WRITE</code>，然后在发送完成后，会取消掉<code>OP_WRITE</code></li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">//设置发送的主体</span><br><span class="line">public void setSend(Send send) &#123;</span><br><span class="line">    if (this.send != null)</span><br><span class="line">        throw new IllegalStateException(&quot;Attempt to begin a send operation with prior send operation still in progress.&quot;);</span><br><span class="line">    this.send = send;</span><br><span class="line">    this.transportLayer.addInterestOps(SelectionKey.OP_WRITE);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//send完成后取消OP_WRITE</span><br><span class="line">private boolean send(Send send) throws IOException &#123;</span><br><span class="line">    send.writeTo(transportLayer);</span><br><span class="line">    if (send.completed())</span><br><span class="line">        transportLayer.removeInterestOps(SelectionKey.OP_WRITE);</span><br><span class="line"></span><br><span class="line">    return send.completed();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="poll轮询"><a href="#poll轮询" class="headerlink" title="poll轮询"></a><strong>poll轮询</strong></h3><blockquote>
+<p>上面的setSend、write、send的操作如何组织起来呢，这就是poll的工作了。</p>
+</blockquote>
+<p>简单来说就是nioSelector执行一个select操作，然后遍历SelectionKey，如果有我们感兴趣的操作，就对相应的Channel进行read、write之类的操作。</p>
+<h4 id="遍历获取有事件发生的Channel"><a href="#遍历获取有事件发生的Channel" class="headerlink" title="遍历获取有事件发生的Channel"></a><strong>遍历获取有事件发生的Channel</strong></h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Iterator&lt;SelectionKey&gt; iterator = selectionKeys.iterator();</span><br><span class="line">//遍历获取每个事件上的Channel</span><br><span class="line">while (iterator.hasNext()) &#123;</span><br><span class="line">    SelectionKey key = iterator.next();</span><br><span class="line">    iterator.remove();</span><br><span class="line">    KafkaChannel channel = channel(key);</span><br><span class="line">    if (channel.finishConnect()) &#123;</span><br><span class="line">        this.connected.add(channel.id());</span><br><span class="line">    &#125; else</span><br><span class="line">    continue;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="read-from-KafkaChannel"><a href="#read-from-KafkaChannel" class="headerlink" title="read from KafkaChannel"></a><strong>read from KafkaChannel</strong></h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">if (channel.ready() &amp;&amp; key.isReadable() &amp;&amp; !hasStagedReceive(channel)) &#123;</span><br><span class="line">    NetworkReceive networkReceive;</span><br><span class="line">    while ((networkReceive = channel.read()) != null)</span><br><span class="line">        addToStagedReceives(channel, networkReceive);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>key.isReadable()</code>只有在Channel监听Read事件，并且Channel有数据写入时才成立</li>
+<li>在完成读操作后，会将NetworkReceive添加到队列：<code>completedReceives</code>中<h4 id="write-to-KafkaChannel"><a href="#write-to-KafkaChannel" class="headerlink" title="write to KafkaChannel"></a><strong>write to KafkaChannel</strong></h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">if (channel.ready() &amp;&amp; key.isWritable()) &#123;</span><br><span class="line">    Send send = channel.write();</span><br><span class="line">    if (send != null) &#123;</span><br><span class="line">        this.completedSends.add(send);</span><br><span class="line">        this.sensors.recordBytesSent(channel.id(), send.size());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<blockquote>
+<p>不同于read操作时使用了while循环来确保读取完毕，write操作是一次性的，如果发送完毕，就去除<code>OP_WRITE</code>事件，并且将Send添加到队列<code>completedSends</code>中；否则就将不取消,然后在后面的循环中继续执行写操作，直至写完为止</p>
+</blockquote>
+<h3 id="NetworkClient-poll"><a href="#NetworkClient-poll" class="headerlink" title="NetworkClient.poll"></a>NetworkClient.poll</h3><blockquote>
+<p>下面把目光拉回到NetworkClient中，来看看执行完selector的poll操作之后，是如何进一步处理的。</p>
+</blockquote>
+<p>ClientRequest在被NetworkClient层执行发送操作的时候，会被添加到<br><code>inFlightRequests</code>中，这个名字很形象——正在飞行中的请求，指代正在发送或者等待响应的请求的集合。该集合中将ClientRequest按照目的节点进行分组，相同目的节点的保存在同一个双端队列中。</p>
+<h4 id="handleCompletedSends"><a href="#handleCompletedSends" class="headerlink" title="handleCompletedSends"></a><strong>handleCompletedSends</strong></h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">for (Send send : this.selector.completedSends()) &#123;</span><br><span class="line">    ClientRequest request = this.inFlightRequests.lastSent(send.destination());</span><br><span class="line">    if (!request.expectResponse()) &#123;</span><br><span class="line">        this.inFlightRequests.completeLastSent(send.destination());</span><br><span class="line">        responses.add(new ClientResponse(request, now, false, null));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>对于不要求响应的请求，将发送完成的RequestSend对应的ClientRequest从inFlightRequests中移除，直接组建一个body为空的response。</p>
+<h4 id="handleCompletedReceives"><a href="#handleCompletedReceives" class="headerlink" title="handleCompletedReceives"></a><strong>handleCompletedReceives</strong></h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">for (NetworkReceive receive : this.selector.completedReceives()) &#123;</span><br><span class="line">    String source = receive.source();</span><br><span class="line">    ClientRequest req = inFlightRequests.completeNext(source);</span><br><span class="line">    Struct body = parseResponse(receive.payload(), req.request().header());</span><br><span class="line">    if (!metadataUpdater.maybeHandleCompletedReceive(req, now, body))</span><br><span class="line">        responses.add(new ClientResponse(req, now, false, body));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>根据接收到的源地址，移除inFlightRequests中对应的ClientRequest，并且根据收到的内容组建response</p>
+<h2 id="producer消息发送过程"><a href="#producer消息发送过程" class="headerlink" title="producer消息发送过程"></a>producer消息发送过程</h2><p><img src="http://olt6kofv9.bkt.clouddn.com/17-2-28/39987736-file_1488277489550_937d.png" alt=""></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2017/02/28/Metadata详解/" rel="prev" title="Metadata详解">
+                Metadata详解 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC8zNTQ1NC8xMTk5MA"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg"
+                alt="fbZhu" />
+            
+              <p class="site-author-name" itemprop="name">fbZhu</p>
+              <p class="site-description motion-element" itemprop="description">人为什么越长大越孤单？
+答:内心中有秘密,无法诉说
+</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">11</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#REF"><span class="nav-number">1.</span> <span class="nav-text">REF</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#重要配置项说明"><span class="nav-number">2.</span> <span class="nav-text">重要配置项说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#send"><span class="nav-number">3.</span> <span class="nav-text">send</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RecordAccumulator"><span class="nav-number">4.</span> <span class="nav-text">RecordAccumulator</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#append"><span class="nav-number">4.1.</span> <span class="nav-text">append</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ready"><span class="nav-number">4.2.</span> <span class="nav-text">ready</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#drain"><span class="nav-number">4.3.</span> <span class="nav-text">drain</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Request-amp-amp-Response"><span class="nav-number">5.</span> <span class="nav-text">Request &amp;&amp; Response</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#NetworkClient"><span class="nav-number">6.</span> <span class="nav-text">NetworkClient</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#连接"><span class="nav-number">6.1.</span> <span class="nav-text">连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#发送"><span class="nav-number">6.2.</span> <span class="nav-text">发送</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#poll轮询"><span class="nav-number">6.3.</span> <span class="nav-text">poll轮询</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#遍历获取有事件发生的Channel"><span class="nav-number">6.3.1.</span> <span class="nav-text">遍历获取有事件发生的Channel</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#read-from-KafkaChannel"><span class="nav-number">6.3.2.</span> <span class="nav-text">read from KafkaChannel</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#write-to-KafkaChannel"><span class="nav-number">6.3.3.</span> <span class="nav-text">write to KafkaChannel</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NetworkClient-poll"><span class="nav-number">6.4.</span> <span class="nav-text">NetworkClient.poll</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#handleCompletedSends"><span class="nav-number">6.4.1.</span> <span class="nav-text">handleCompletedSends</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#handleCompletedReceives"><span class="nav-number">6.4.2.</span> <span class="nav-text">handleCompletedReceives</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#producer消息发送过程"><span class="nav-number">7.</span> <span class="nav-text">producer消息发送过程</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fbZhu</span>
+
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/three.min.js"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/canvas_sphere.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.4.js"></script>
+  <script>AV.initialize("cea0JXdngKbekqyUcytEll8T-gzGzoHsz", "4K0JxrNpvBK8dDrqbkSm4axL");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
