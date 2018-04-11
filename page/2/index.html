@@ -244,6 +244,381 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/03/01/Kafka consumer原理剖析/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2017/03/01/Kafka consumer原理剖析/" itemprop="url">Kafka consumer原理剖析</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-03-01T10:00:40+08:00">
+                2017-03-01
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2017/03/01/Kafka consumer原理剖析/" class="leancloud_visitors" data-flag-title="Kafka consumer原理剖析">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <blockquote>
+<p>Blockquote</p>
+</blockquote>
+<h1 id="REF"><a href="#REF" class="headerlink" title="REF"></a>REF</h1><ul>
+<li><a href="https://kafka.apache.org/0100/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html" target="_blank" rel="noopener">KafkaConsumer API doc</a></li>
+<li><a href="https://wangzzu.github.io/2017/01/16/kafka-group/" target="_blank" rel="noopener">Kafka 之 Group 状态变化分析及 Rebalance 过程</a></li>
+<li><a href="https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal" target="_blank" rel="noopener">Kafka conumser redesign since 0.9.0</a></li>
+<li><a href="http://www.cnblogs.com/huxi2b/p/6223228.html" target="_blank" rel="noopener">趣解reblance</a></li>
+</ul>
+<h1 id="consumer的新特性"><a href="#consumer的新特性" class="headerlink" title="consumer的新特性"></a>consumer的新特性</h1><blockquote>
+<p>在 0.9.0.0 之后的 Kafka，出现了几个新变动，一个是在 Server 端增加了 GroupCoordinator 这个角色，另一个较大的变动是将 topic 的 offset 信息由之前存储在 zookeeper 上改为存储到一个特殊的 topic 中（__consumer_offsets）。</p>
+</blockquote>
+<h2 id="consumer-offsets"><a href="#consumer-offsets" class="headerlink" title="__consumer_offsets"></a>__consumer_offsets</h2><p><strong>consumer_offsets 是 Kafka 内部使用的一个 topic，专门用来存储 group 消费的情况，默认情况下有50个 partition，每个 partition 三副本，而具体 group 的消费情况要存储到哪一个 partition 上，是根据 <code>abs(GroupId.hashCode()) % NumPartitions</code> 来计算（其中，NumPartitions 是</strong>consumer_offsets 的 partition 数，默认是50个）的。</p>
+<h3 id="offset"><a href="#offset" class="headerlink" title="offset"></a>offset</h3><p><img src="http://olt6kofv9.bkt.clouddn.com/17-3-1/8882384-file_1488335250910_f431.png" alt=""></p>
+<ul>
+<li><strong>Last Commiteed Offset</strong>：consumer上一次commit的位置；</li>
+<li><strong>Current Position</strong>：cosumer当前消费到的位置，last coomitted offset 到current position之间的就是当前正被consumer处理的消息。</li>
+<li><strong>High Watermark</strong>：被成功备份到所有replicas的最新位置，该位置之前的所消息都被认为是安全可消费的。</li>
+<li><strong>Log End Offset</strong>：Producer 写入到 Kafka 中的最新一条数据的 offset；</li>
+</ul>
+<h1 id="coordinator机制"><a href="#coordinator机制" class="headerlink" title="coordinator机制"></a>coordinator机制</h1><blockquote>
+<p>kafka server将partiton分配的工作转移到了Client上(Producer中也可以看到)，server保留的是group的分配工作，这样的设计是为了方便client使用灵活的partition分配方案。</p>
+</blockquote>
+<h2 id="coordinator-in-server"><a href="#coordinator-in-server" class="headerlink" title="coordinator in server"></a>coordinator in server</h2><p>server上的Coordinator 负责reblance、Offset提交、心跳，实现主要代码在<code>kafka.coordinator.GroupCoordinator.scala</code></p>
+<p><strong>一个consumer group对应一个coordinator</strong></p>
+<h3 id="coordinator-状态机"><a href="#coordinator-状态机" class="headerlink" title="coordinator 状态机"></a>coordinator 状态机</h3><p>共有5种状态：</p>
+<ol>
+<li><strong>Dead</strong>：group中没有成员，并且metadata已被移除,这种状态响应各种请求都是一个response： UNKNOWN_MEMBER_ID</li>
+<li><strong>Empty</strong>：Group 没有任何成员，如果所有的 offsets 都过期的话就会变成 Dead，一般当 Group 新创建时是这个状态，也有可能这个 Group 仅仅用于 offset commits 并没有任何成员,该状态至响应<code>JoinGroupRequest</code></li>
+<li><strong>Stable</strong>：这种状态下，coordinator已经获得了激活的generation，或者目前没有成员，等待第一个joinGroup。该状态还会接受成员的heartbeats。</li>
+<li><strong>PreparingRebalance</strong>：准备重平衡状态，例如member发生变化</li>
+<li><strong>AwaitingSync</strong>：所有的joinGroup请求都接受到后，会选举产生一个leader，这个状态就是在等待leader发送partition的分配结果(SyncGroupRequest)。</li>
+</ol>
+<p>状态机如下：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-3-1/50604217-file_1488350867913_ff5f.png" alt=""></p>
+<h2 id="coordinator-in-client"><a href="#coordinator-in-client" class="headerlink" title="coordinator in client"></a>coordinator in client</h2><blockquote>
+<p>根据KafkaConsumer主要方法<code>pollOnce</code>来跟踪client上的coordinator工作过程<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private Map&lt;TopicPartition, List&lt;ConsumerRecord&lt;K, V&gt;&gt;&gt; pollOnce(long timeout) &#123;</span><br><span class="line"></span><br><span class="line">    coordinator.ensureCoordinatorReady();</span><br><span class="line"></span><br><span class="line">    if (subscriptions.partitionsAutoAssigned())</span><br><span class="line">        coordinator.ensurePartitionAssignment();</span><br><span class="line"></span><br><span class="line">    if (!subscriptions.hasAllFetchPositions())</span><br><span class="line">        updateFetchPositions(this.subscriptions.missingFetchPositions());</span><br><span class="line"></span><br><span class="line">    long now = time.milliseconds();</span><br><span class="line">    client.executeDelayedTasks(now);</span><br><span class="line"></span><br><span class="line">    Map&lt;TopicPartition, List&lt;ConsumerRecord&lt;K, V&gt;&gt;&gt; records = fetcher.fetchedRecords();</span><br><span class="line">    if (!records.isEmpty())</span><br><span class="line">        return records;</span><br><span class="line"></span><br><span class="line">    fetcher.sendFetches();</span><br><span class="line">    client.poll(timeout, now);</span><br><span class="line">    return fetcher.fetchedRecords();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+</blockquote>
+<h3 id="第一步、投石问路——确保server端有可用的coordinator"><a href="#第一步、投石问路——确保server端有可用的coordinator" class="headerlink" title="第一步、投石问路——确保server端有可用的coordinator"></a>第一步、投石问路——确保server端有可用的coordinator</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public void ensureCoordinatorReady() &#123;</span><br><span class="line">    //通过与节点建立连接判断coordinator是否存活</span><br><span class="line">    while (coordinatorUnknown()) &#123;</span><br><span class="line">        //发送GroupCoordinatorRequest请求</span><br><span class="line">        RequestFuture&lt;Void&gt; future = sendGroupCoordinatorRequest();</span><br><span class="line">        client.poll(future);</span><br><span class="line"></span><br><span class="line">        if (future.failed()) &#123;</span><br><span class="line">            if (future.isRetriable())</span><br><span class="line">                client.awaitMetadataUpdate();</span><br><span class="line">            else</span><br><span class="line">                throw future.exception();</span><br><span class="line">        &#125; else if (coordinator != null &amp;&amp; client.connectionFailed(coordinator)) &#123;</span><br><span class="line">            coordinatorDead();</span><br><span class="line">            time.sleep(retryBackoffMs);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果请求有broker响应了，那么将将该节点做为coordinator：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">this.coordinator = new Node(Integer.MAX_VALUE - groupCoordinatorResponse.node().id(),</span><br><span class="line">        groupCoordinatorResponse.node().host(),</span><br><span class="line">        groupCoordinatorResponse.node().port());</span><br></pre></td></tr></table></figure></p>
+<h3 id="第二步、确保group是可用的"><a href="#第二步、确保group是可用的" class="headerlink" title="第二步、确保group是可用的"></a>第二步、确保group是可用的</h3><p>首先，对group需要reJoin的情况进行梳理：</p>
+<ul>
+<li>有consumer离开当前group，client会发送一个<code>LeaveGroupRequest</code>如：</li>
+<li>不再订阅某个topic</li>
+<li>ConsumerCoordinator执行关闭操作</li>
+<li>发送SyncGroupRequest后收到的response异常</li>
+<li>发送HeartbeatRequest后收到的response异常，包括：<code>REBALANCE_IN_PROGRESS</code>(<strong>正在重平衡</strong>),<code>ILLEGAL_GENERATION</code>(generation值不合法),<code>UNKNOWN_MEMBER_ID</code>(<strong>未知的成员</strong>)<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public void ensureActiveGroup() &#123;</span><br><span class="line">    if (!needRejoin()) return;</span><br><span class="line"></span><br><span class="line">    //如果设置了auto commit，那么在rebalance之前先提交，再准备reJoin</span><br><span class="line">    if (needsJoinPrepare) &#123;</span><br><span class="line">        onJoinPrepare(generation, memberId);</span><br><span class="line">        needsJoinPrepare = false;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    while (needRejoin()) &#123;</span><br><span class="line">        ensureCoordinatorReady();</span><br><span class="line"></span><br><span class="line">        //在reblance执行之前，需要确保所有JoinGroup的请求都被处理掉了，避免频繁的reblance</span><br><span class="line">        if (client.pendingRequestCount(this.coordinator) &gt; 0) &#123;</span><br><span class="line">            client.awaitPendingRequests(this.coordinator);</span><br><span class="line">            continue;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        RequestFuture&lt;ByteBuffer&gt; future = sendJoinGroupRequest();</span><br><span class="line">        future.addListener(new RequestFutureListener&lt;ByteBuffer&gt;() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void onSuccess(ByteBuffer value) &#123;</span><br><span class="line">                onJoinComplete(generation, memberId, protocol, value);</span><br><span class="line">                needsJoinPrepare = true;</span><br><span class="line">                heartbeatTask.reset();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">        client.poll(future);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>JoinGroupRequest中包含的信息有：</p>
+<ul>
+<li>groupId</li>
+<li>memberId</li>
+<li>subscriptions &amp;&amp; PartitionAssignor(默认：RangeAssignor)</li>
+</ul>
+<h3 id="第三步、处理JoinGroupResponse"><a href="#第三步、处理JoinGroupResponse" class="headerlink" title="第三步、处理JoinGroupResponse"></a>第三步、处理JoinGroupResponse</h3><p>这是通过回调函数实现的，具体的是<code>JoinGroupResponseHandler</code>的handle方法：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public void handle(JoinGroupResponse joinResponse, RequestFuture&lt;ByteBuffer&gt; future) &#123;</span><br><span class="line">    Errors error = Errors.forCode(joinResponse.errorCode());</span><br><span class="line">    if (error == Errors.NONE) &#123;</span><br><span class="line">        //记录新的generation</span><br><span class="line">        AbstractCoordinator.this.generation = joinResponse.generationId();</span><br><span class="line">        AbstractCoordinator.this.rejoinNeeded = false;</span><br><span class="line">        //leader与follower区别对待</span><br><span class="line">        if (joinResponse.isLeader()) &#123;</span><br><span class="line">            onJoinLeader(joinResponse).chain(future);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            onJoinFollower().chain(future);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; else if &#123;</span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>server的coordinator在收到joinGroupRequest后，会为每个group组选择一个member任命为leader。</p>
+<p>leader在收到response后，会进行partition的分配，并且将分配结果发送给server的coordinator<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private RequestFuture&lt;ByteBuffer&gt; onJoinLeader(JoinGroupResponse joinResponse) &#123;</span><br><span class="line">    Map&lt;String, ByteBuffer&gt; groupAssignment = performAssignment(joinResponse.leaderId(), joinResponse.groupProtocol(),</span><br><span class="line">            joinResponse.members());</span><br><span class="line">    SyncGroupRequest request = new SyncGroupRequest(groupId, generation, memberId, groupAssignment);</span><br><span class="line">    return sendSyncGroupRequest(request);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>分区分配的逻辑：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">protected Map&lt;String, ByteBuffer&gt; performAssignment(String leaderId,</span><br><span class="line">                                                    String assignmentStrategy,</span><br><span class="line">                                                    Map&lt;String, ByteBuffer&gt; allSubscriptions) &#123;</span><br><span class="line">    //获取分配规则(默认range)</span><br><span class="line">    PartitionAssignor assignor = lookupAssignor(assignmentStrategy);</span><br><span class="line">    Set&lt;String&gt; allSubscribedTopics = new HashSet&lt;&gt;();</span><br><span class="line">    Map&lt;String, Subscription&gt; subscriptions = new HashMap&lt;&gt;();</span><br><span class="line">    //获取订阅的topic</span><br><span class="line">    for (Map.Entry&lt;String, ByteBuffer&gt; subscriptionEntry : allSubscriptions.entrySet()) &#123;</span><br><span class="line">        Subscription subscription = ConsumerProtocol.deserializeSubscription(subscriptionEntry.getValue());</span><br><span class="line">        subscriptions.put(subscriptionEntry.getKey(), subscription);</span><br><span class="line">        allSubscribedTopics.addAll(subscription.topics());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    this.subscriptions.groupSubscribe(allSubscribedTopics);</span><br><span class="line">    metadata.setTopics(this.subscriptions.groupSubscription());</span><br><span class="line"></span><br><span class="line">    //对每个订阅的topic进行分区分配</span><br><span class="line">    Map&lt;String, Assignment&gt; assignment = assignor.assign(metadata.fetch(), subscriptions);</span><br><span class="line"></span><br><span class="line">    Map&lt;String, ByteBuffer&gt; groupAssignment = new HashMap&lt;&gt;();</span><br><span class="line">    for (Map.Entry&lt;String, Assignment&gt; assignmentEntry : assignment.entrySet()) &#123;</span><br><span class="line">        ByteBuffer buffer = ConsumerProtocol.serializeAssignment(assignmentEntry.getValue());</span><br><span class="line">        groupAssignment.put(assignmentEntry.getKey(), buffer);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    return groupAssignment;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>follower只需要发送一个不包含分区结果的SyncGroupRequest<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private RequestFuture&lt;ByteBuffer&gt; onJoinFollower() &#123;</span><br><span class="line">    SyncGroupRequest request = new SyncGroupRequest(groupId, generation,</span><br><span class="line">            memberId, Collections.&lt;String, ByteBuffer&gt;emptyMap());</span><br><span class="line">    return sendSyncGroupRequest(request);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="关闭KafkaListnerContainer时发生了些什么"><a href="#关闭KafkaListnerContainer时发生了些什么" class="headerlink" title="关闭KafkaListnerContainer时发生了些什么"></a>关闭KafkaListnerContainer时发生了些什么</h2><p>一共三个操作：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">if(this.listenerInvokerFuture != null) &#123;</span><br><span class="line">    this.stopInvokerAndCommitManualAcks();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">try &#123;</span><br><span class="line">    this.consumer.unsubscribe();</span><br><span class="line">&#125; catch (WakeupException var8) &#123;</span><br><span class="line">    ;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">this.consumer.close();</span><br></pre></td></tr></table></figure></p>
+<p>主要看unsubscribe方法：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">this.subscriptions.unsubscribe();</span><br><span class="line">this.coordinator.maybeLeaveGroup();</span><br><span class="line">this.metadata.needMetadataForAllTopics(false);</span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>首先取消了所有订阅</li>
+<li>然后发送一个LeaveGroupRequest，并且将memberId设为<code>UNKNOWN</code>,needRejoin设为<code>true</code></li>
+</ul>
+<blockquote>
+<p>当所有member离开时，server的coordinator进入<code>Empty</code>状态</p>
+</blockquote>
+<h3 id="小实验"><a href="#小实验" class="headerlink" title="小实验"></a>小实验</h3><p>创建两个ListenerContainer，订阅同一个topic(“test” with partitions=6)，并且在同一个group内：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ConcurrentMessageListenerContainer testContainer = new ContainerBuilder()</span><br><span class="line">       // .setTopic(&quot;kafka.scanAllBackup&quot;)</span><br><span class="line">       .setTopic(&quot;test&quot;)</span><br><span class="line">       .setGroupId(&quot;g1&quot;)</span><br><span class="line">       .setListenerName(&quot;testListener&quot;)</span><br><span class="line">       .setBeanName(&quot;testContainer&quot;)</span><br><span class="line">...</span><br><span class="line">ConcurrentMessageListenerContainer secondContainer = new ContainerBuilder()</span><br><span class="line">        // .setTopic(&quot;kafka.scanAllBackup&quot;)</span><br><span class="line">        .setTopic(&quot;test&quot;)</span><br><span class="line">        .setGroupId(&quot;g1&quot;)</span><br><span class="line">        .setListenerName(&quot;testListener&quot;)</span><br><span class="line">        .setBeanName(&quot;secondContainer&quot;)</span><br></pre></td></tr></table></figure></p>
+<h4 id="实验结果"><a href="#实验结果" class="headerlink" title="实验结果"></a>实验结果</h4><p><strong>开启第一个Container</strong><br><img src="http://olt6kofv9.bkt.clouddn.com/17-3-2/16700626-file_1488420271775_ed4d.png" alt=""></p>
+<p>此时的generation = 1，分配的分区数为6<br><strong>开启第二个Container</strong><br><img src="http://olt6kofv9.bkt.clouddn.com/17-3-2/75149308-file_1488420268216_161a2.png" alt=""></p>
+<p>因为有新的member加入，因此触发了Rebalance，根据Range分配规则，每个consumer获得3个分区</p>
+<blockquote>
+<p>简述下Range Assignor规则：假如topic有N个分区(按number排序)，group组内有M个consumer(按字典序排列)订阅，那么就现将分区分成M份，每份N/M个，如果不能整除，就将余数(N%M)分配给前N%M个consumer</p>
+</blockquote>
+<p><strong>关闭第一个Container</strong><br><img src="http://olt6kofv9.bkt.clouddn.com/17-3-2/90437657-file_1488420864267_182ec.png" alt=""><br>有member离开group，再次触发Reblance，第二个container独享6个分区</p>
+<h3 id="实验二"><a href="#实验二" class="headerlink" title="实验二"></a>实验二</h3><p>在使用kafka的时候有个现象：如果将正在消费的consumer关闭、重启，那么在短时间内他是无法接收到消息的，从日志上看得话就是server coordinator没有为这个consumer分配分区，为了详解这种机制，我将发送JoinGroup的debug信息输出。<strong>测试用例同上</strong><br><strong>开启第一个container</strong><br><img src="http://olt6kofv9.bkt.clouddn.com/17-3-2/80737211-file_1488454524878_15aff.png" alt=""><br>在6分09秒发送了一个joinGroup请求，但是并没有得到反馈。</p>
+<blockquote>
+<p>g1这个group在server中的generation=1，因此新的joinGroup请求进来后，server进入<code>PreparingRebalance</code>状态。</p>
+</blockquote>
+<p><strong>开启第二个Container，关闭第一个container</strong><br><img src="http://olt6kofv9.bkt.clouddn.com/17-3-2/41188233-file_1488454749159_15056.png" alt=""></p>
+<p>发送了第二个joinGroup请求，并没有马上收到反馈，在6分29秒关闭了第一个container，经过了96s后，收到了反馈，并且指定leader为client2(也就是当前的consumer)，client1是member，成功分配到了3个分区。<br><img src="http://olt6kofv9.bkt.clouddn.com/17-3-2/58352541-file_1488455306513_8b3d.png" alt=""><br>在10分06秒的时候，server再次执行了重平衡，client2再次发送了joinGroup请求，马上得到了反馈，并且这次独享6个分区。</p>
+<blockquote>
+<p>产生这次重平衡的原因是：8分05秒server反馈了joinGroup请求，session_timeout设置的是两分钟，在10分05秒的时候，server依然未收到client1的heartbeat，因此触发了重平衡</p>
+</blockquote>
+<h4 id="server-log"><a href="#server-log" class="headerlink" title="server.log"></a><strong>server.log</strong></h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[2017-03-02 19:06:03,197] INFO [GroupCoordinator 2]: Stabilized group g1 generation 1 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:06:03,201] INFO [GroupCoordinator 2]: Assignment received from leader for group g1 for generation 1 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:06:10,351] INFO [GroupCoordinator 2]: Preparing to restabilize group g1 with old generation 1 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:08:06,504] INFO [GroupCoordinator 2]: Stabilized group g1 generation 2 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:08:06,511] INFO [GroupCoordinator 2]: Assignment received from leader for group g1 for generation 2 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:10:06,506] INFO [GroupCoordinator 2]: Preparing to restabilize group g1 with old generation 2 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:10:06,966] INFO [GroupCoordinator 2]: Stabilized group g1 generation 3 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:10:06,970] INFO [GroupCoordinator 2]: Assignment received from leader for group g1 for generation 3 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:10:51,173] INFO [GroupCoordinator 2]: Preparing to restabilize group g1 with old generation 3 (kafka.coordinator.GroupCoordinator)</span><br><span class="line">[2017-03-02 19:10:51,175] INFO [GroupCoordinator 2]: Group g1 generation 3 is dead and removed (kafka.coordinator.GroupCoordinator)</span><br></pre></td></tr></table></figure>
+<ul>
+<li>6分03秒，server收到来自leader的syncGroup请求，coordinator进入<code>Stable</code>状态。</li>
+<li>随后，<strong>非正常</strong>关闭container，<del>所有member离开了group，coordinator进入<code>Empty</code>状态</del> coordinator无法收到members的心跳</li>
+<li>6分10秒，client重启，并发送了joinGroup请求，memberId为<code>UNKNOWN</code>,server进入<code>PreparingRebalance</code>状态</li>
+</ul>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-5-26/2459845.jpg" alt=""></p>
+<blockquote>
+<p><strong>疑点</strong>： <del>coordinator在收到client1的leaveGroup请求后为啥还会响应其joinGroup请求嘞？</del> coordinator因为没有感知到client1的离开，所以才会长时间等待</p>
+</blockquote>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/02/28/Metadata详解/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2017/02/28/Metadata详解/" itemprop="url">Metadata详解</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-02-28T13:50:23+08:00">
+                2017-02-28
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2017/02/28/Metadata详解/" class="leancloud_visitors" data-flag-title="Metadata详解">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <blockquote>
+<p>探究<code>org.apache.kafka.clients</code>中Metadata的数据结构、更新及获取原理</p>
+</blockquote>
+<p><a href="http://www.infocool.net/kb/Other/201609/193278.html" target="_blank" rel="noopener">ref</a></p>
+<p><strong>Metadata</strong>是为producer及consumer服务的，在producer和consumer创建的时候都会创metadata：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">this.metadata = new Metadata(retryBackoffMs, config.getLong(ConsumerConfig.METADATA_MAX_AGE_CONFIG));</span><br><span class="line"></span><br><span class="line">this.metadata = new Metadata(retryBackoffMs, config.getLong(ProducerConfig.METADATA_MAX_AGE_CONFIG));</span><br></pre></td></tr></table></figure></p>
+<h2 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h2><ul>
+<li><strong>refreshBackoffMs</strong>：metadata的最短刷新间隔，避免频繁的Poll操作，默认100ms</li>
+<li><strong>metadataExpireMs</strong>：在下次更新前，metadata保存的最长时间，默认5min</li>
+<li><strong>version</strong>：每次更新一次metadata都会将version值增加1</li>
+<li><strong>lastRefreshMs</strong>：上次更新时间，也记录更新失败时间</li>
+<li><strong>lastSuccessfulRefreshMs</strong>：上次成功更新时间</li>
+<li><strong>cluster</strong>：记录集群中节点、partitionInfo、topic之间的关系，只是个子集，因为Metadata初始化的时候，cluster也是初始化为空的</li>
+<li><strong>listeners</strong>：自定义的接口，用于监听Metadata更新，在<code>ConsumerCoordinator</code>有使用到</li>
+<li><strong>needMetadataForAllTopics</strong>：是否需要cluster中所有topic的metadata，默认为false</li>
+</ul>
+<h2 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h2><h3 id="1-timeToNextUpdate"><a href="#1-timeToNextUpdate" class="headerlink" title="1. timeToNextUpdate"></a>1. timeToNextUpdate</h3><p>该方法用于计算下一次刷新metadata的的时间间隔(ms)<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public synchronized long timeToNextUpdate(long nowMs) &#123;</span><br><span class="line">    //距离时效还有多长时间</span><br><span class="line">    long timeToExpire = needUpdate ? 0 : Math.max(this.lastSuccessfulRefreshMs + this.metadataExpireMs - nowMs, 0);</span><br><span class="line">    //距离下一次允许刷新的时间</span><br><span class="line">    long timeToAllowUpdate = this.lastRefreshMs + this.refreshBackoffMs - nowMs;</span><br><span class="line">    return Math.max(timeToExpire, timeToAllowUpdate);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>Metadata的使用是<strong>线程安全</strong>的。</p>
+<h3 id="2-awaitUpdate"><a href="#2-awaitUpdate" class="headerlink" title="2. awaitUpdate"></a>2. awaitUpdate</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public synchronized void awaitUpdate(final int lastVersion, final long maxWaitMs) throws InterruptedException &#123;</span><br><span class="line">    ...</span><br><span class="line">    long begin = System.currentTimeMillis();</span><br><span class="line">    long remainingWaitMs = maxWaitMs;</span><br><span class="line">    /*循环等待version值超过当前version值,时间耗尽就退出*/</span><br><span class="line">    while (this.version &lt;= lastVersion) &#123;</span><br><span class="line">        if (remainingWaitMs != 0)</span><br><span class="line">            wait(remainingWaitMs);</span><br><span class="line">        long elapsed = System.currentTimeMillis() - begin;</span><br><span class="line">        if (elapsed &gt;= maxWaitMs)</span><br><span class="line">            throw new TimeoutException(&quot;Failed to update metadata after &quot; + maxWaitMs + &quot; ms.&quot;);</span><br><span class="line">        remainingWaitMs = maxWaitMs - elapsed;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="3-update"><a href="#3-update" class="headerlink" title="3. update"></a>3. update</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public synchronized void update(Cluster cluster, long now) &#123;</span><br><span class="line">    this.needUpdate = false;</span><br><span class="line">    this.lastRefreshMs = now;</span><br><span class="line">    this.lastSuccessfulRefreshMs = now;</span><br><span class="line">    this.version += 1;</span><br><span class="line">    //如果有人监听了metadata的更新，通知他们</span><br><span class="line">    for (Listener listener: listeners)</span><br><span class="line">        listener.onMetadataUpdate(cluster);  </span><br><span class="line">    </span><br><span class="line">    //新的cluster覆盖旧的cluster</span><br><span class="line">    this.cluster = this.needMetadataForAllTopics ? getClusterForCurrentTopics(cluster) : cluster;    </span><br><span class="line"></span><br><span class="line">    notifyAll();  //通知所有的阻塞的线程(调用了wait的线程)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="producer获取metadata"><a href="#producer获取metadata" class="headerlink" title="producer获取metadata"></a>producer获取metadata</h2><p>时效图如下：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-2-28/87761728-file_1488267221939_ae6.png" alt=""></p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/02/28/kafka producer原理梳理/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -502,7 +877,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">11</span>
+                  <span class="site-state-item-count">13</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
@@ -515,7 +890,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">5</span>
                   <span class="site-state-item-name">tags</span>
                 </a>
               </div>

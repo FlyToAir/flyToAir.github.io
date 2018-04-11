@@ -70,7 +70,7 @@
 
 
 
-  <meta name="keywords" content="Hexo, NexT" />
+  <meta name="keywords" content="并发,Java," />
 
 
 
@@ -81,17 +81,18 @@
 
 
 
-<meta name="description" content="Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any problems when using Hexo, you can find the answer in troubleshooting or you can ask me on GitHub. Quick">
+<meta name="description" content="近来，在工作中多次使用了多线程编程，其中使用最多的就是ExecutorService了，在使用中遇到了诸多问题，最主要的问题是——何时关闭线程池？ 何时关闭线程池的问题可以转化为如何获知所有线程执行完毕。关于这个问题,stackoverflow上有一篇很有意思的讨论 可以总结出以下几种方式： 1. shutdown + awaitTermination的方式模式：ExecutorService t">
+<meta name="keywords" content="并发,Java">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Hello World">
-<meta property="og:url" content="http://yoursite.com/2018/04/04/hello-world/index.html">
+<meta property="og:title" content="如何愉快的使用线程池">
+<meta property="og:url" content="http://yoursite.com/2017/09/07/如何愉快的使用线程池/index.html">
 <meta property="og:site_name" content="天外飞猪的博客">
-<meta property="og:description" content="Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any problems when using Hexo, you can find the answer in troubleshooting or you can ask me on GitHub. Quick">
+<meta property="og:description" content="近来，在工作中多次使用了多线程编程，其中使用最多的就是ExecutorService了，在使用中遇到了诸多问题，最主要的问题是——何时关闭线程池？ 何时关闭线程池的问题可以转化为如何获知所有线程执行完毕。关于这个问题,stackoverflow上有一篇很有意思的讨论 可以总结出以下几种方式： 1. shutdown + awaitTermination的方式模式：ExecutorService t">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2018-04-04T02:16:19.239Z">
+<meta property="og:updated_time" content="2018-04-11T06:11:52.476Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Hello World">
-<meta name="twitter:description" content="Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any problems when using Hexo, you can find the answer in troubleshooting or you can ask me on GitHub. Quick">
+<meta name="twitter:title" content="如何愉快的使用线程池">
+<meta name="twitter:description" content="近来，在工作中多次使用了多线程编程，其中使用最多的就是ExecutorService了，在使用中遇到了诸多问题，最主要的问题是——何时关闭线程池？ 何时关闭线程池的问题可以转化为如何获知所有线程执行完毕。关于这个问题,stackoverflow上有一篇很有意思的讨论 可以总结出以下几种方式： 1. shutdown + awaitTermination的方式模式：ExecutorService t">
 
 
 
@@ -121,13 +122,13 @@
 
 
 
-  <link rel="canonical" href="http://yoursite.com/2018/04/04/hello-world/"/>
+  <link rel="canonical" href="http://yoursite.com/2017/09/07/如何愉快的使用线程池/"/>
 
 
 
 
 
-  <title>Hello World | 天外飞猪的博客</title>
+  <title>如何愉快的使用线程池 | 天外飞猪的博客</title>
   
 
 
@@ -244,7 +245,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/04/hello-world/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/09/07/如何愉快的使用线程池/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="fbZhu">
@@ -261,7 +262,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">Hello World</h1>
+          <h1 class="post-title" itemprop="name headline">如何愉快的使用线程池</h1>
         
 
         <div class="post-meta">
@@ -273,8 +274,8 @@
               
                 <span class="post-meta-item-text">Posted on</span>
               
-              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-04-04T10:16:19+08:00">
-                2018-04-04
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-09-07T13:54:29+08:00">
+                2017-09-07
               </time>
             
 
@@ -291,7 +292,7 @@
 
           
           
-             <span id="/2018/04/04/hello-world/" class="leancloud_visitors" data-flag-title="Hello World">
+             <span id="/2017/09/07/如何愉快的使用线程池/" class="leancloud_visitors" data-flag-title="如何愉快的使用线程池">
                <span class="post-meta-divider">|</span>
                <span class="post-meta-item-icon">
                  <i class="fa fa-eye"></i>
@@ -322,15 +323,21 @@
       
 
       
-        <p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>
+        <p>近来，在工作中多次使用了多线程编程，其中使用最多的就是<code>ExecutorService</code>了，在使用中遇到了诸多问题，最主要的问题是——<strong>何时关闭线程池？</strong></p>
+<p>何时关闭线程池的问题可以转化为如何获知所有线程执行完毕。关于这个问题,stackoverflow上有<a href="https://stackoverflow.com/questions/1250643/how-to-wait-for-all-threads-to-finish-using-executorservice" target="_blank" rel="noopener">一篇很有意思的讨论</a></p>
+<p>可以总结出以下几种方式：</p>
+<h3 id="1-shutdown-awaitTermination的方式"><a href="#1-shutdown-awaitTermination的方式" class="headerlink" title="1. shutdown + awaitTermination的方式"></a>1. shutdown + awaitTermination的方式</h3><p>模式：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ExecutorService taskExecutor = Executors.newFixedThreadPool(4);</span><br><span class="line">while(...) &#123;</span><br><span class="line">  taskExecutor.execute(new MyTask());</span><br><span class="line">&#125;</span><br><span class="line">taskExecutor.shutdown();</span><br><span class="line">try &#123;</span><br><span class="line">  taskExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);</span><br><span class="line">&#125; catch (InterruptedException e) &#123;</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>调用了<code>shutdown</code>方法后，线程池不再接受新的任务，等待当前所有任务执行完毕后就会退出。这种方式适用于<strong>所有线程是一次性执行的</strong>，也就是说线程池中的线程只会被调用一次，如果需要执行的任务次数大于线程池的数量，调用shutdown方法会导致后续任务无法分配到线程执行。</p>
+<h3 id="2-使用countDownLatch"><a href="#2-使用countDownLatch" class="headerlink" title="2. 使用countDownLatch"></a>2. 使用countDownLatch</h3><p>CountDownLatch是一个常用于线程同步的<strong>闭锁</strong>，这个适用于<strong>已知任务总执行次数</strong>的情况。<br>模式：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">CountDownLatch latch = new CountDownLatch(totalNumberOfTasks);</span><br><span class="line">ExecutorService taskExecutor = Executors.newFixedThreadPool(4);</span><br><span class="line">while(...) &#123;</span><br><span class="line">  taskExecutor.execute(new MyTask());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">try &#123;</span><br><span class="line">  latch.await();</span><br><span class="line">&#125; catch (InterruptedException E) &#123;</span><br><span class="line">   // handle</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在每个线程中执行一次countDown操作。</p>
+<h3 id="3-使用Future-get"><a href="#3-使用Future-get" class="headerlink" title="3. 使用Future.get()"></a>3. 使用Future.get()</h3><p>因为<code>future.get()</code>方法会等待线程执行完成，并获取返回值，所以当所有task对应的future都有返回值了，就可以关闭线程池了。<br>模式：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ExecutorService pool = Executors.newFixedThreadPool(concurrent);</span><br><span class="line">List&lt;Future&gt; futures = new ArrayList&lt;&gt;();</span><br><span class="line">for (Map&lt;String, Date&gt; dateSplit : dateSplits) &#123;</span><br><span class="line">    futures.add(pool.submit(new MyCallableTask());</span><br><span class="line">&#125;</span><br><span class="line">for (Future future : futures) &#123;</span><br><span class="line">    future.get();</span><br><span class="line">&#125;</span><br><span class="line">pool.shutdown();</span><br></pre></td></tr></table></figure></p>
+<h3 id="4-使用Future-CompletionService"><a href="#4-使用Future-CompletionService" class="headerlink" title="4. 使用Future + CompletionService"></a>4. 使用Future + CompletionService</h3><p><code>CompletionService</code>也是java.util.concurrent提供的。<br>模式：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ExecutorService threadPool = Executors.newFixedThreadPool(N_THREADS);</span><br><span class="line">CompletionService&lt;List&lt;Object&gt;&gt; pool = new</span><br><span class="line">        ExecutorCompletionService&lt;~&gt;(threadPoolpool);</span><br><span class="line">List&lt;Future&lt;List&lt;Object&gt;&gt;&gt; futures = new ArrayList&lt;&gt;();</span><br><span class="line">while(...) &#123;</span><br><span class="line">    futures.add(pool.submit(new CallableTask()));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">for (future in futures) &#123;</span><br><span class="line">    future.get();</span><br><span class="line">&#125;</span><br><span class="line">treadPool.shutdown();</span><br></pre></td></tr></table></figure></p>
+<p><code>com.best.oasis.express.util.kafka.utils.KafkaConsumerUtils</code>中就是使用这种模式来获取每个分区上对应时间段内的消息的。该模式适用于<strong>需要处理task返回值</strong>的情况</p>
+<h3 id="5-使用CompletableFuture-需要JDK1-8"><a href="#5-使用CompletableFuture-需要JDK1-8" class="headerlink" title="5. 使用CompletableFuture (需要JDK1.8)"></a>5. 使用CompletableFuture (<em>需要JDK1.8</em>)</h3><p>用的不多，直接看模式：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">CompletableFuture&lt;?&gt;[] futures = tasks.stream()</span><br><span class="line">        .map(task -&gt; CompletableFuture.runAsync(task, pool))</span><br><span class="line">        .toArray(CompletableFuture[]::new);</span><br><span class="line">CompletableFuture.allOf(futures).join();</span><br><span class="line">pool.shutdown();</span><br></pre></td></tr></table></figure></p>
+<h3 id="6-使用ListenableFuture-需要Guava"><a href="#6-使用ListenableFuture-需要Guava" class="headerlink" title="6. 使用ListenableFuture (需要Guava)"></a>6. 使用ListenableFuture (需要<em>Guava</em>)</h3><p>上面几种模式都是等待线程执行完，而这个则是通过回调，在所有任务执行完后通知用户。<br>模式：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ListeningExecutorService service = MoreExecutors.listeningDecorator(Executors</span><br><span class="line">        .newFixedThreadPool(concurrent));</span><br><span class="line">List&lt;ListenableFuture&lt;Object&gt;&gt; futures = new ArrayList&lt;&gt;();</span><br><span class="line">for (Map&lt;String, Date&gt; dateSplit : dateSplits) &#123;</span><br><span class="line">    ListenableFuture&lt;Object&gt; lf = service.submit(new MyCallableTask());</span><br><span class="line">    futures.add(lf);</span><br><span class="line">&#125;</span><br><span class="line">ListenableFuture&lt;List&lt;Object&gt;&gt; lf = Futures.successfulAsList(futures);</span><br><span class="line">Futures.addCallback(lf, new FutureCallback&lt;List&lt;Object&gt;&gt;() &#123;</span><br><span class="line">    @Override</span><br><span class="line">    public void onSuccess(List&lt;Object&gt; result) &#123;</span><br><span class="line">        logger.info(&quot;所有线程处理完毕&quot;);</span><br><span class="line">        service.shutdownNow();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void onFailure(Throwable t) &#123;</span><br><span class="line">        logger.info(&quot;某个线程出错了&quot; + t);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></p>
+<blockquote>
+<p><code>successfulAsList</code>在所有Future都执行成功后返回一个由这些Future返回值组成的List，而且错误或者取消的Future都是在onSuccess中处理的，只是返回值为null。<strong>顺便一提：使用这个Future扩展形式的话，task中的异常是会被拦截的</strong></p>
+</blockquote>
 
       
     </div>
@@ -346,6 +353,14 @@
 
     <footer class="post-footer">
       
+        <div class="post-tags">
+          
+            <a href="/tags/并发/" rel="tag"># 并发</a>
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+        </div>
+      
 
       
       
@@ -355,8 +370,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2017/09/07/如何愉快的使用线程池/" rel="next" title="如何愉快的使用线程池">
-                <i class="fa fa-chevron-left"></i> 如何愉快的使用线程池
+              <a href="/2017/04/28/Controller工作原理/" rel="next" title="Controller工作原理">
+                <i class="fa fa-chevron-left"></i> Controller工作原理
               </a>
             
           </div>
@@ -365,8 +380,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2018/04/04/test-blog/" rel="prev" title="test_blog">
-                test_blog <i class="fa fa-chevron-right"></i>
+              <a href="/2018/04/04/hello-world/" rel="prev" title="Hello World">
+                Hello World <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -501,7 +516,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Quick-Start"><span class="nav-number">1.</span> <span class="nav-text">Quick Start</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Create-a-new-post"><span class="nav-number">1.1.</span> <span class="nav-text">Create a new post</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Run-server"><span class="nav-number">1.2.</span> <span class="nav-text">Run server</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Generate-static-files"><span class="nav-number">1.3.</span> <span class="nav-text">Generate static files</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Deploy-to-remote-sites"><span class="nav-number">1.4.</span> <span class="nav-text">Deploy to remote sites</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-shutdown-awaitTermination的方式"><span class="nav-number">1.</span> <span class="nav-text">1. shutdown + awaitTermination的方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-使用countDownLatch"><span class="nav-number">2.</span> <span class="nav-text">2. 使用countDownLatch</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-使用Future-get"><span class="nav-number">3.</span> <span class="nav-text">3. 使用Future.get()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-使用Future-CompletionService"><span class="nav-number">4.</span> <span class="nav-text">4. 使用Future + CompletionService</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-使用CompletableFuture-需要JDK1-8"><span class="nav-number">5.</span> <span class="nav-text">5. 使用CompletableFuture (需要JDK1.8)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-使用ListenableFuture-需要Guava"><span class="nav-number">6.</span> <span class="nav-text">6. 使用ListenableFuture (需要Guava)</span></a></li></ol></div>
             
 
           </div>

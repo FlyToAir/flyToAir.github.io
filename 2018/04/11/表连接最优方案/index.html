@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="google-site-verification" content="bxXYqd7tQuaxEZXTyg2jG5HJvQhRp0bpb5KzceDpPsU" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="SQL," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="表连接是集合运算  嵌套循环连接最传统、普遍、重要的连接方式根据执行计划的执行顺序，解析下该连接方式的执行步骤  在列account_num的索引中，从满足查询条件account_num&amp;gt;’A000000139’的范围中读取第一个索引行。 利用account_num中的rowid从表ge_balance_account中读取对应的数据行，此时，所读取的数据行中所有列都将获得常量值，并利用查">
+<meta name="keywords" content="SQL">
+<meta property="og:type" content="article">
+<meta property="og:title" content="表连接方案">
+<meta property="og:url" content="http://yoursite.com/2018/04/11/表连接最优方案/index.html">
+<meta property="og:site_name" content="天外飞猪的博客">
+<meta property="og:description" content="表连接是集合运算  嵌套循环连接最传统、普遍、重要的连接方式根据执行计划的执行顺序，解析下该连接方式的执行步骤  在列account_num的索引中，从满足查询条件account_num&amp;gt;’A000000139’的范围中读取第一个索引行。 利用account_num中的rowid从表ge_balance_account中读取对应的数据行，此时，所读取的数据行中所有列都将获得常量值，并利用查">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/22587721.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/9243702.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/18746506.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/23430760.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/43171176.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/27165107.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/59878132.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/15051616.jpg">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/37084461.jpg">
+<meta property="og:updated_time" content="2018-04-11T06:07:20.603Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="表连接方案">
+<meta name="twitter:description" content="表连接是集合运算  嵌套循环连接最传统、普遍、重要的连接方式根据执行计划的执行顺序，解析下该连接方式的执行步骤  在列account_num的索引中，从满足查询条件account_num&amp;gt;’A000000139’的范围中读取第一个索引行。 利用account_num中的rowid从表ge_balance_account中读取对应的数据行，此时，所读取的数据行中所有列都将获得常量值，并利用查">
+<meta name="twitter:image" content="http://olt6kofv9.bkt.clouddn.com/18-2-12/22587721.jpg">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/04/11/表连接最优方案/"/>
+
+
+
+
+
+  <title>表连接方案 | 天外飞猪的博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">天外飞猪的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            Tags
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/11/表连接最优方案/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">表连接方案</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-04-11T14:07:20+08:00">
+                2018-04-11
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2018/04/11/表连接最优方案/" class="leancloud_visitors" data-flag-title="表连接方案">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>表连接是集合运算</p>
+</blockquote>
+<h1 id="嵌套循环连接"><a href="#嵌套循环连接" class="headerlink" title="嵌套循环连接"></a>嵌套循环连接</h1><p>最传统、普遍、重要的连接方式<br><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/22587721.jpg" alt=""><br>根据执行计划的执行顺序，解析下该连接方式的<strong>执行步骤</strong></p>
+<ol>
+<li>在列account_num的索引中，从满足查询条件account_num&gt;’A000000139’的范围中读取第一个索引行。</li>
+<li>利用account_num中的rowid从表ge_balance_account中读取对应的数据行，此时，所读取的数据行中所有列都将获得常量值，并利用查询条件site_type=29对所读取结果进行检验，如果满足条件则执行下一阶段的操作；否则，返回步骤1重新开始处理下一个索引行。</li>
+<li>利用表a的site_name列的常量值去表s中site_name列的索引中寻找对应的索引行，如果没找到对应的行，匹配失败，返回步骤1重新处理下一个索引行；成功，则返回一条匹配记录。</li>
+</ol>
+<h2 id="特征"><a href="#特征" class="headerlink" title="特征"></a>特征</h2><ul>
+<li>次序性。按次序处理驱动表查询范围中的每一行数据，按次序执行表连接。</li>
+<li>先行性。依据优先读取的表中查询范围的大小，决定所需要处理的数据量。</li>
+<li>选择性。即使为WHERE条件中所使用到的列都创建了索引，也不意味着这些索引全都会被使用。</li>
+</ul>
+<h2 id="应用准则"><a href="#应用准则" class="headerlink" title="应用准则"></a>应用准则</h2><ul>
+<li>适合用于范围扫描方式。可以实现快速响应。</li>
+<li>如果执行表连接的某一边表只有在获得了对方所提供的执行结果后才能缩减自身的查询范围，则必须选择嵌套循环表连接方式。</li>
+<li>驱动结果集数据量较大时，执行效率不高，主要是因为会发生大量的随机读取。</li>
+</ul>
+<h1 id="排序合并连接"><a href="#排序合并连接" class="headerlink" title="排序合并连接"></a>排序合并连接</h1><p><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/9243702.jpg" alt=""></p>
+<p>##执行步骤 </p>
+<ol>
+<li>从表s的site_type列索引中读取满足查询条件s.site_type=29的数据行后，并按照site_name的值对数据进行排序。</li>
+<li>从表a中读取满足查询条件的数据行后，也按照site_name的值进行排序。</li>
+<li>对两个排序后的数据按照site_name相等的要求进行合并</li>
+</ol>
+<h2 id="特征-1"><a href="#特征-1" class="headerlink" title="特征"></a>特征</h2><ul>
+<li>并行性。根据自身的查询条件读取条件并排序。</li>
+<li>独立性。不需要从其他集合中获取处理结果。</li>
+<li>必须按照全局扫描的方式进行处理。</li>
+<li>与表的连接方向无关</li>
+<li>在很大程度上减少随机读取次数</li>
+</ul>
+<h2 id="应用准则-1"><a href="#应用准则-1" class="headerlink" title="应用准则"></a>应用准则</h2><ol>
+<li>在只能按照全局扫描方式来处理的SQL中，可以使用该方法</li>
+<li>在不需要获取对应表中任何常量值也可以充分地实现缩减查询范围的条件下，使用该方法很有效</li>
+<li>不适合OLTP类型的系统，因为排序是非常昂贵的操作。</li>
+</ol>
+<p>随机读取的代价：在最坏的情况下，为了读取某一行的数据，需要从磁盘将整个表格数据读入。<br>排序的代价：对内存造成了很大的负担</p>
+<h1 id="哈希连接"><a href="#哈希连接" class="headerlink" title="哈希连接"></a>哈希连接</h1><p><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/18746506.jpg" alt=""></p>
+<h2 id="术语及基本概念"><a href="#术语及基本概念" class="headerlink" title="术语及基本概念"></a>术语及基本概念</h2><p><strong>Hash Area</strong><br>内存空间，存储包括：位图矢量（向量）、哈希表和分区表。<br>位图矢量：就是Build Input中的值的集合（集合的唯一性），主要用于过滤操作（如果在Probe Input过程中所读取的数据行不存在于位图向量中，则没必要为其在分期中分配空间）<br>哈希表中存储各个分区的位置信息。</p>
+<p><strong>分区(Partition)</strong></p>
+<p><strong>聚簇(Cluster)</strong><br>在哈希聚簇的时候，把具有相同哈希值的行存储在统一聚簇中。（那么跟分区又有什么区别呢？ 书中有个比喻，如果将柜子比作分区，那么cluster就是柜子中的抽屉），好吧，这个意思就是：第一次哈希得到的是分区值（即映射到分区上），第二次哈希得到的值是映射到分区内的聚簇上。</p>
+<p><strong>Build Input</strong><br>提前执行的读取准备操作</p>
+<p><strong>Probe Input</strong><br>后来读取的操作</p>
+<p><strong>In-Memory哈希连接</strong><br>能将Build Input全部加载到Hash Area的情况<br>指将Build Input全部存储在内存中并未其创建哈希表，在扫描Probe Input的同时实现连接。</p>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/23430760.jpg" alt=""></p>
+<ol>
+<li>根据统计信息选择结果集较小的作为Build Input</li>
+<li>确定分区数fan-out</li>
+<li>经过第一次hash运算，确定所在的分区</li>
+<li>第二次hash运算，得到hash_value_2</li>
+<li>根据hash_value_2创建哈希表，并将对应的列存入相应分区的聚簇中</li>
+<li>根据连接列的值创建位图向量</li>
+<li>按照上面的步骤对表中所有数据对象进行处理</li>
+<li>从现在开始从Probe Input中读取满足查询条件的数据</li>
+<li>第一次hash运算，并利用位图向量对Probe Input对象进行过滤，若没有通过过滤，则返回并重新读取下一个对象</li>
+<li>对于通过的对象进行第二次hash运算，利用hash表读取相关分区和聚簇找到相应的行，找不到，重新读取下一个</li>
+<li>执行连接操作，将结果发送到运输单位</li>
+<li>反复8~11的操作</li>
+<li>运输单位被填满后直接返回结果</li>
+<li>按照以上步骤对Probe Input进行处理，直到结束为止。</li>
+</ol>
+<p>疑问：<del>位图向量中到底存储的是什么？是连接列的值呢，还是经过第一次哈希得到的值呢?</del> OK，还是统一确定为连接列的唯一值好了</p>
+<h2 id="特征-2"><a href="#特征-2" class="headerlink" title="特征"></a>特征</h2><ul>
+<li>不需要使用索引</li>
+<li>允许实现局部范围扫描</li>
+</ul>
+<h1 id="延迟哈希连接"><a href="#延迟哈希连接" class="headerlink" title="延迟哈希连接"></a>延迟哈希连接</h1><p>不能完全加载，需要将超出的部分存储在磁盘中<br><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/43171176.jpg" alt=""><br>前6步基本一致</p>
+<ol start="7">
+<li>如果超过了Hash Area的范围，则将分区的地址信息存储在分区表中，并将超出的部分移到磁盘上对应的分区上，后面如果寻找到分区并利用地址信息，就再次将磁盘      上的数据加载到内存中实现连接操作</li>
+<li>处理Bulid Input直到结束为止</li>
+<li>从Probe Input的查询范围内读取数据，进行第一次哈希运算，并利用位图向量对结果进行过滤</li>
+<li>对通过过滤的进行第二次哈希运算，如果对应的Build Input对象存在于内存中则读取哈希表进行连接操作，否则，将Probe Input对象存储在其所属的分区中</li>
+<li>将无法实现连接的分区存储在磁盘上</li>
+<li>按照以上方式对Probe Input的对象进行连续处理</li>
+<li>内存中的连接操作处理完毕，接下来，利用分区表中的地址信息从磁盘上将没有被连接的分区对载入到内存中</li>
+<li>从重新载入到内存中的各个分区中选择一个最小的集合为其创建哈希表。实现角色互换</li>
+<li>对重新确定的Probe Input进行扫描，利用哈希表进行连接。按照这种方式对磁盘中剩余的所有对象进行处理，直到结束为止</li>
+</ol>
+<h2 id="特征-3"><a href="#特征-3" class="headerlink" title="特征"></a>特征</h2><ul>
+<li>延迟哈希连接主要被使用在需要处理大量数据的批处理应用程序中。</li>
+<li>哈希连接能弥补sort merge join最大的弱点(对海量数据执行排序操作所需要付出的代价过大)</li>
+<li>利用位图向量，对另一个集合进行过滤，这一点与嵌套循环连接很相似。</li>
+<li>延迟哈希无法实现局部范围扫描</li>
+<li>一般而言，指定的Hash Area大小基本上是排序区域大小的1.5倍</li>
+<li>在处理非海量数据的情况下，当额外要求对连接列的值进行排序操作时排序合并更有效</li>
+</ul>
+<h1 id="半连接"><a href="#半连接" class="headerlink" title="半连接"></a>半连接</h1><ul>
+<li>在使用了子查询的时候为了实现子查询与主查询之间的连接而使用的一种广义表连接</li>
+<li>子查询可以无条件的继承主查询的所有属性，反之不成立。（主查询所具有的各个列可以被使用在子查询中）</li>
+<li>结果集合始终与主查询的集合类型相同</li>
+</ul>
+<h2 id="嵌套循环型半连接"><a href="#嵌套循环型半连接" class="headerlink" title="嵌套循环型半连接"></a>嵌套循环型半连接</h2><p><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/27165107.jpg" alt=""><br>为了维护主查询集合类型的完整性而附加性地增加了SORT(UNIQUE)操作</p>
+<p> 在这里，子查询被优先执行，因此可以将子查询定义为“<strong>提供者</strong>”，其执行结果将以常量值的形式提供给主查询Where条件中的连接列。</p>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/59878132.jpg" alt=""></p>
+<p>这个SQL的执行计划中，优先执行的是主查询，然后利用其执行结果与子查询进行了连接。因此在这里可以将自查询定义为“<strong>检验者</strong>”，对主查询的执行结果进行了检验。<br>实现这一转变的关键在于</p>
+<ul>
+<li>主查询中添加了查询条件<code>t.site_type=30</code></li>
+<li>在子查询中添加了<code>a.site_id = t.id</code>这一句看上去重复的连接条件，这个连接条件可以从逻辑上确保子查询不可能被优先执行</li>
+</ul>
+<h2 id="过滤型半连接"><a href="#过滤型半连接" class="headerlink" title="过滤型半连接"></a>过滤型半连接</h2><p><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/15051616.jpg" alt=""></p>
+<h2 id="哈希型半连接"><a href="#哈希型半连接" class="headerlink" title="哈希型半连接"></a>哈希型半连接</h2><p><img src="http://olt6kofv9.bkt.clouddn.com/18-2-12/37084461.jpg" alt=""></p>
+<p>限制条件：</p>
+<ol>
+<li>在子查询中只能使用一个表</li>
+<li>在子查询中再次嵌套使用子查询时无法使用哈希连接</li>
+<li>连接条件只能是相等</li>
+<li>在查询中不能使用Group BY,Connect by, rownum等限制条件</li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/SQL/" rel="tag"># SQL</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/04/11/kafka消息/" rel="next" title="kafka消息">
+                <i class="fa fa-chevron-left"></i> kafka消息
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC8zNTQ1NC8xMTk5MA"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg"
+                alt="fbZhu" />
+            
+              <p class="site-author-name" itemprop="name">fbZhu</p>
+              <p class="site-description motion-element" itemprop="description">人为什么越长大越孤单？
+答:内心中有秘密,无法诉说
+</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#嵌套循环连接"><span class="nav-number">1.</span> <span class="nav-text">嵌套循环连接</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#特征"><span class="nav-number">1.1.</span> <span class="nav-text">特征</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#应用准则"><span class="nav-number">1.2.</span> <span class="nav-text">应用准则</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#排序合并连接"><span class="nav-number">2.</span> <span class="nav-text">排序合并连接</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#特征-1"><span class="nav-number">2.1.</span> <span class="nav-text">特征</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#应用准则-1"><span class="nav-number">2.2.</span> <span class="nav-text">应用准则</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#哈希连接"><span class="nav-number">3.</span> <span class="nav-text">哈希连接</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#术语及基本概念"><span class="nav-number">3.1.</span> <span class="nav-text">术语及基本概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#特征-2"><span class="nav-number">3.2.</span> <span class="nav-text">特征</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#延迟哈希连接"><span class="nav-number">4.</span> <span class="nav-text">延迟哈希连接</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#特征-3"><span class="nav-number">4.1.</span> <span class="nav-text">特征</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#半连接"><span class="nav-number">5.</span> <span class="nav-text">半连接</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#嵌套循环型半连接"><span class="nav-number">5.1.</span> <span class="nav-text">嵌套循环型半连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#过滤型半连接"><span class="nav-number">5.2.</span> <span class="nav-text">过滤型半连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#哈希型半连接"><span class="nav-number">5.3.</span> <span class="nav-text">哈希型半连接</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fbZhu</span>
+
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/three.min.js"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/canvas_sphere.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.4.js"></script>
+  <script>AV.initialize("cea0JXdngKbekqyUcytEll8T-gzGzoHsz", "4K0JxrNpvBK8dDrqbkSm4axL");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
