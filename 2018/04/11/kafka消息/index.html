@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="google-site-verification" content="bxXYqd7tQuaxEZXTyg2jG5HJvQhRp0bpb5KzceDpPsU" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Kafka," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="带着以下两点疑问，进行kafka server的Log管理源码的分析：  producer遇到 NOT_LEADER_EXCEPTION 是在何时产生的 消息是如何在ISR中备份的  下面以从上往下的方式对一条消息写入磁盘的全链路进行分析 KafkaApis kafka apis反映出kafka broker server可以提供哪些服务，broker server主要和producer，cons">
+<meta name="keywords" content="Kafka">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kafka消息">
+<meta property="og:url" content="http://yoursite.com/2018/04/11/kafka消息/index.html">
+<meta property="og:site_name" content="天外飞猪的博客">
+<meta property="og:description" content="带着以下两点疑问，进行kafka server的Log管理源码的分析：  producer遇到 NOT_LEADER_EXCEPTION 是在何时产生的 消息是如何在ISR中备份的  下面以从上往下的方式对一条消息写入磁盘的全链路进行分析 KafkaApis kafka apis反映出kafka broker server可以提供哪些服务，broker server主要和producer，cons">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-13/72686806-file_1492065684931_d216.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-13/20229045-file_1492067234752_15050.png">
+<meta property="og:image" content="http://kafka.apache.org/0102/images/log_compaction.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-18/34749506-file_1492481684531_13fee.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-17/96991802-file_1492421401594_f659.png">
+<meta property="og:updated_time" content="2018-04-11T05:43:20.583Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="kafka消息">
+<meta name="twitter:description" content="带着以下两点疑问，进行kafka server的Log管理源码的分析：  producer遇到 NOT_LEADER_EXCEPTION 是在何时产生的 消息是如何在ISR中备份的  下面以从上往下的方式对一条消息写入磁盘的全链路进行分析 KafkaApis kafka apis反映出kafka broker server可以提供哪些服务，broker server主要和producer，cons">
+<meta name="twitter:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-13/72686806-file_1492065684931_d216.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/04/11/kafka消息/"/>
+
+
+
+
+
+  <title>kafka消息 | 天外飞猪的博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">天外飞猪的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            Tags
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/11/kafka消息/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">kafka消息</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-04-11T13:39:08+08:00">
+                2018-04-11
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2018/04/11/kafka消息/" class="leancloud_visitors" data-flag-title="kafka消息">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>带着以下两点疑问，进行kafka server的Log管理源码的分析：</p>
+<ul>
+<li><strong>producer遇到 <em>NOT_LEADER_EXCEPTION</em> 是在何时产生的</strong></li>
+<li><strong>消息是如何在ISR中备份的</strong></li>
+</ul>
+<p>下面以从上往下的方式对一条消息写入磁盘的全链路进行分析</p>
+<h1 id="KafkaApis"><a href="#KafkaApis" class="headerlink" title="KafkaApis"></a>KafkaApis</h1><blockquote>
+<p>kafka apis反映出kafka broker server可以提供哪些服务，<br>broker server主要和producer，consumer，controller有交互，搞清这些api就清楚了broker server的所有行为</p>
+</blockquote>
+<h2 id="handleProducerRequest"><a href="#handleProducerRequest" class="headerlink" title="handleProducerRequest"></a>handleProducerRequest</h2><ul>
+<li>该方法用于处理Client的producer请求，<code>ApiKeys = 0</code></li>
+<li>从 <em>RequestChannel</em> 中获取请求，然后根据<strong>acks</strong>规则进行反馈</li>
+<li>写入磁盘的动作在<code>replicaManager.appendRecords</code>中完成</li>
+</ul>
+<h2 id="ack规则"><a href="#ack规则" class="headerlink" title="ack规则"></a>ack规则</h2><table>
+<thead>
+<tr>
+<th>acks</th>
+<th>规则</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>producer不需要等待ack,server收到消息后直接反馈</td>
+</tr>
+<tr>
+<td>1</td>
+<td>leader成功写入后反馈给producer</td>
+</tr>
+<tr>
+<td>-1 (kafka-client中配置为<code>&quot;all&quot;</code>)</td>
+<td>在ISR中所有replicas都写入消息后才进行反馈</td>
+</tr>
+</tbody>
+</table>
+<h1 id="ReplicaManager-appendMessages"><a href="#ReplicaManager-appendMessages" class="headerlink" title="ReplicaManager.appendMessages"></a>ReplicaManager.appendMessages</h1><ul>
+<li>先将消息写入leader的log中(正常情况就是当前这个broker)</li>
+<li>将消息写到ISR的其他备份中</li>
+<li>超时或者ack规则满足时进行反馈操作(执行回调函数：<code>responseCallback</code>)</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">//写到leader的log</span><br><span class="line">val localProduceResults = appendToLocalLog(internalTopicsAllowed, entriesPerPartition, requiredAcks)</span><br><span class="line"></span><br><span class="line">if (delayedRequestRequired(requiredAcks, entriesPerPartition, localProduceResults)) &#123;</span><br><span class="line">//acks=-1时需要创建 delayedProduce实现消息的备份</span><br><span class="line">val produceMetadata = ProduceMetadata(requiredAcks, produceStatus)</span><br><span class="line">val delayedProduce = new DelayedProduce(timeout, produceMetadata, this, responseCallback)</span><br><span class="line">val producerRequestKeys = entriesPerPartition.keys.map(new TopicPartitionOperationKey(_)).toSeq</span><br><span class="line">delayedProducePurgatory.tryCompleteElseWatch(delayedProduce, producerRequestKeys)</span><br><span class="line"></span><br><span class="line">&#125; else &#123;</span><br><span class="line">val produceResponseStatus = produceStatus.mapValues(status =&gt; status.responseStatus)</span><br><span class="line">responseCallback(produceResponseStatus)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="ReplicaManager-appendToLocalLog"><a href="#ReplicaManager-appendToLocalLog" class="headerlink" title="ReplicaManager.appendToLocalLog"></a>ReplicaManager.appendToLocalLog</h1><blockquote>
+<p>当topic为内部topic(即<code>__consumer_offsets</code>)，并且不允许往内部类中写消息时，抛出 <em>InvalidTopicException</em></p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">val info = partitionOpt match &#123;</span><br><span class="line">  case Some(partition) =&gt;</span><br><span class="line">    partition.appendRecordsToLeader(records, requiredAcks)</span><br><span class="line"></span><br><span class="line">  case None =&gt; throw new UnknownTopicOrPartitionException(&quot;Partition %s doesn&apos;t exist on %d&quot;</span><br><span class="line">    .format(topicPartition, localBrokerId))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Partition-appendRecordsToLeader"><a href="#Partition-appendRecordsToLeader" class="headerlink" title="Partition.appendRecordsToLeader"></a>Partition.appendRecordsToLeader</h1><h3 id="判断当前broker是否是parition的leader"><a href="#判断当前broker是否是parition的leader" class="headerlink" title="判断当前broker是否是parition的leader"></a>判断当前broker是否是parition的leader</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def getReplica(replicaId: Int = localBrokerId): Option[Replica] = Option(assignedReplicaMap.get(replicaId))</span><br><span class="line"></span><br><span class="line">def leaderReplicaIfLocal: Option[Replica] =</span><br><span class="line">  leaderReplicaIdOpt.filter(_ == localBrokerId).flatMap(getReplica)</span><br></pre></td></tr></table></figure>
+<ul>
+<li>assignedReplicaMap：用于存放每个partition对应的leader已经replicas</li>
+<li>通过比较leaderId与localBrokerId，判断当前broker是否就是leader</li>
+<li>如果不满足，那么将抛出<em>NotLeaderForPartitionException</em></li>
+</ul>
+<h3 id="备份数不满足条件的消息不会写入"><a href="#备份数不满足条件的消息不会写入" class="headerlink" title="备份数不满足条件的消息不会写入"></a>备份数不满足条件的消息不会写入</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"> val log = leaderReplica.log.get</span><br><span class="line"> val minIsr = log.config.minInSyncReplicas</span><br><span class="line"> val inSyncSize = inSyncReplicas.size</span><br><span class="line">// acks为all的时候才会进行判断</span><br><span class="line"> if (inSyncSize &lt; minIsr &amp;&amp; requiredAcks == -1) &#123;</span><br><span class="line">   throw new NotEnoughReplicasException(&quot;Number of insync replicas for partition %s is [%d], below required minimum [%d]&quot;</span><br><span class="line">     .format(topicPartition, inSyncSize, minIsr))</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Log-append"><a href="#Log-append" class="headerlink" title="Log.append"></a>Log.append</h1><ul>
+<li>返回的格式为<code>LogAppendInfo</code>,包含第一条及最后一条offset信息</li>
+<li>找到该Partition在当前broker上面最新的segment，如果<em>塞不进去</em> 就新建一个segment</li>
+<li>将消息添加到segment中</li>
+<li>更新segment的<code>LogEndOffset</code>为最新添加消息的<code>lastOffset</code> + 1<h2 id="ByteBufferMessageSet"><a href="#ByteBufferMessageSet" class="headerlink" title="ByteBufferMessageSet"></a>ByteBufferMessageSet</h2>append方法中传入的消息集的数据结构为<code>ByteBufferMessageSet</code> (<em>注：在0.10.2.0版本后引入新的结构：MemoryRecords</em>)，父类为Messageset,其结构如下图所示：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-4-13/72686806-file_1492065684931_d216.png" alt=""><blockquote>
+<p>一个有效的MessageSet的最小长度为12字节</p>
+</blockquote>
+<h3 id="Message的组成"><a href="#Message的组成" class="headerlink" title="Message的组成"></a>Message的组成</h3>Message在magic不同的情况下有不同的结构：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-4-13/20229045-file_1492067234752_15050.png" alt=""><h3 id="迭代器的实现"><a href="#迭代器的实现" class="headerlink" title="迭代器的实现"></a>迭代器的实现</h3><code>internalIterator</code>是ByteBufferMessageSet实现的迭代器，迭代单位是<code>MessageAndOffset</code></li>
+</ul>
+<blockquote>
+<p>magic的值是由server中Log的配置属性：<code>message.format.version</code>决定的，0.10.0之前的版本的magic值为0，之后的版本为1</p>
+</blockquote>
+<p>迭代的过程也是对消息的有效性的检验过程：</p>
+<ul>
+<li>ByteBuffer(对应MessageSet)的长度是否&lt; 12 </li>
+<li>消息体(对应Message)的长度是否 &lt; 魔术为0时Message的头部长度(4+1+1+8+4 = 18)</li>
+<li>ByteBuffer的长度是否&lt;消息体的长度(否则就表明消息不完整)</li>
+</ul>
+<p><strong>满足以上条件的消息一定是无法继续迭代的</strong></p>
+<blockquote>
+<p>由于消息的载体实现的是ByteBuffer，那我们就从Buffer的操作的角度来看看message和offset是如何被迭代取出来的：</p>
+</blockquote>
+<p>假设当前接收到一个新的ByteBuffer，下面进行迭代：</p>
+<ol>
+<li>获取buffer的片段(第一次算是拷贝)：<em>topIter = buffer.slice()</em></li>
+<li>获取offset(获取前八个字节)： <em>offset = topIter.getLong()</em></li>
+<li>获取size(获取紧接着的四个字节)：<em>size = topIter.getInt()</em></li>
+<li>获取message(当前position指向message的开始位置，截取后续size大小的就可以得到message)：<em>message = topIter.slice; message.limit(size)</em></li>
+<li>将topIter的position指向下一条MessageSet: <em>topIter.position(topIter.position + size)</em></li>
+</ol>
+<h3 id="LogAppendInfo的生成"><a href="#LogAppendInfo的生成" class="headerlink" title="LogAppendInfo的生成"></a>LogAppendInfo的生成</h3><p>LogAppendInfo主要包含四个属性，用于描述message set<br>: firstOffest：第一条消息的offset<br>: lastOffset：最后一条消息的offset<br>: maxTimestamp：消息里面包含的最大时间戳<br>: offsetOfMaxTimestamp：最大时间戳消息的offset</p>
+<p><code>analyzeAndValidateMessageSet</code>方法实现了LogAppendInfo的生成，根据上面提到的迭代器对MessageSet中的消息进行迭代处理，找出并记录offset和timestamp信息，此外也对每条消息进行检验：</p>
+<ol>
+<li>每条消息的大小不能超过<code>max.message.bytes</code>所定义的</li>
+<li>每条消息必须通过循环冗余校验</li>
+</ol>
+<h3 id="消息的进一步校验"><a href="#消息的进一步校验" class="headerlink" title="消息的进一步校验"></a>消息的进一步校验</h3><p>对消息的进一步校验及转化是在<code>validateMessagesAndAssignOffsets</code>方法中完成的。该方法的参数中涉及到一些概念：</p>
+<h4 id="1-topic清理策略"><a href="#1-topic清理策略" class="headerlink" title="1.topic清理策略"></a>1.topic清理策略</h4><p><code>log.cleanup.policy</code>配置项控制着消息在segment中持久化的策略，目前有两种策略供选择：<strong>delete</strong>和<strong>compact</strong>，默认选项为delte。</p>
+<ul>
+<li>delete的策略很好理解，就是当segment时间或者大小到期了就删除。</li>
+<li><p>compact的策略是为了满足系统灾后恢复的需求，该选项是针对topic的，比如存在某个topic：<em>email_topic</em>用于存储用户变更的email信息，key=userId,value=emailAddress，<strong>compact</strong>操作就是在日志删除过程中保留每个userId最新的数据，如果系统崩溃了也能通过该topic获得用户最新修改的email地址。下面的图很好的诠释了这种操作：<br><img src="http://kafka.apache.org/0102/images/log_compaction.png" width="530px"></p>
+<h4 id="2-版本与magicValue"><a href="#2-版本与magicValue" class="headerlink" title="2. 版本与magicValue"></a>2. 版本与magicValue</h4></li>
+<li><p>由于kafka的版本更新速度比较快，为了能让新的server版本兼容老的client版本以及server的滚动升级的实现，提供了<code>message.format.version</code>配置项定义consumer及Producer的API版本。</p>
+</li>
+<li>不同的API版本对应不同的magicValue，其中0.9.0.X版本之前(包括该版本)的magicValue未0，之后的都为1<blockquote>
+<p>当前我们生产环境使用的API版本为<em>0.10.0.0</em>，server的版本为<em>0.10.1.1</em></p>
+</blockquote>
+</li>
+</ul>
+<h4 id="3-解析非压缩消息"><a href="#3-解析非压缩消息" class="headerlink" title="3. 解析非压缩消息"></a>3. 解析非压缩消息</h4><blockquote>
+<p>producer可以选择是否对消息进行压缩</p>
+</blockquote>
+<p>message.timestamp.type：时间戳类型<br>: CreateTime：消息的创建时间&lt;<strong>默认值</strong>&gt;<br>: LogAppendTime：添加到log的时间</p>
+<p>message.timestamp.difference.max.ms：最大时间间隔,表示收到的消息中的时间戳与当前时间的差的最大容忍值。</p>
+<p>对非压缩消息的进一步处理的过程依然是ByteBuffer的操作过程：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">/*主要目的是获取maxTimestamp和offsetOfMaxTimestamp*/</span><br><span class="line">var messagePosition = 0</span><br><span class="line">var maxTimestamp = Message.NoTimestamp</span><br><span class="line">var offsetOfMaxTimestamp = -1L</span><br><span class="line">//将position位置存到mark中</span><br><span class="line">buffer.mark()</span><br><span class="line">while (messagePosition &lt; sizeInBytes - MessageSet.LogOverhead) &#123;</span><br><span class="line">  buffer.position(messagePosition)</span><br><span class="line">  //offsetCounter是server维护的下一个offset的值</span><br><span class="line">  buffer.putLong(offsetCounter.getAndIncrement())</span><br><span class="line">  val messageSize = buffer.getInt()</span><br><span class="line">  val messageBuffer = buffer.slice()</span><br><span class="line">  messageBuffer.limit(messageSize)</span><br><span class="line">  val message = new Message(messageBuffer)</span><br><span class="line">  //以上的操作能获取到MessageSet中的一条message</span><br><span class="line">  if (message.magic &gt; Message.MagicValue_V0) &#123;</span><br><span class="line">    validateTimestamp(message, now, timestampType, timestampDiffMaxMs)</span><br><span class="line">    if (message.timestamp &gt; maxTimestamp) &#123;</span><br><span class="line">      maxTimestamp = message.timestamp</span><br><span class="line">      offsetOfMaxTimestamp = offsetCounter.value - 1</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  //将buffer的position移到后一条消息的头部</span><br><span class="line">  messagePosition += MessageSet.LogOverhead + messageSize</span><br><span class="line">&#125;</span><br><span class="line">//根据mark恢复position</span><br><span class="line">buffer.reset()</span><br></pre></td></tr></table></figure></p>
+<p>经过上面的操作，MessageSet中的offset被server重新设置了，并且maxTimestamp之类的信息重新收集了。这些信息在append操作中会被使用：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">validMessages = validateAndOffsetAssignResult.validatedMessages</span><br><span class="line">appendInfo.maxTimestamp = validateAndOffsetAssignResult.maxTimestamp</span><br><span class="line">appendInfo.offsetOfMaxTimestamp = validateAndOffsetAssignResult.offsetOfMaxTimestamp</span><br><span class="line">appendInfo.lastOffset = offset.value - 1</span><br></pre></td></tr></table></figure></p>
+<p>其中：<br>: <code>validMessages</code>就是处理完后的MessageSet<br>: <code>offset</code>是上面使用到的offsetCounter，即下一个offset值。为什么要<strong>-1</strong>?因为上面执行了getAndIncrement()操作，因此当前的<code>offset</code>指向的依然是下一个offset值</p>
+<h4 id="4-压缩消息的处理"><a href="#4-压缩消息的处理" class="headerlink" title="4.压缩消息的处理"></a>4.压缩消息的处理</h4><blockquote>
+<p>producer的压缩策略必须与broker一致，如果不匹配那么将不会解压缩消息</p>
+</blockquote>
+<p>以下几种情况不会对压缩消息进行解压处理：</p>
+<ol>
+<li>topic指定了压缩策略，但是发送的消息中没有key(会报错)</li>
+<li>消息体与server的magic值不一致</li>
+<li></li>
+</ol>
+<hr>
+<h2 id="找到合适的segment"><a href="#找到合适的segment" class="headerlink" title="找到合适的segment"></a>找到合适的segment</h2><ul>
+<li>一个topic由多个parition组成，每个partition又存在多个segment</li>
+<li>每个segment的大小由<code>log.segment.bytes</code>控制,下面是segment大小设置为<strong>1024</strong>的broker上某个partiton的Log情况：<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[test-0]$ du -smh *</span><br><span class="line">0	    00000000000000017699.index</span><br><span class="line">4.0K	00000000000000017699.log</span><br><span class="line">4.0K	00000000000000017699.timeindex</span><br><span class="line">0	    00000000000000017724.index</span><br><span class="line">4.0K	00000000000000017724.log</span><br><span class="line">0	    00000000000000017724.timeindex</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<blockquote>
+<ul>
+<li>每个log的命名规则是取该log中 <strong>下一个</strong> offset的值(<code>logEndOffset</code>);</li>
+<li>以index结尾的offset index文件的作用是将offset映射到物理文件中</li>
+<li>timeindex文件将时间戳与segment中的逻辑offset联系起来</li>
+</ul>
+</blockquote>
+<p>满足以下几个条件之一时会创建新的segment：</p>
+<ol>
+<li>当前segment容不下最新的消息</li>
+<li>当前segment非空，并且达到了<code>log.roll.hours</code>的时间</li>
+<li>offset 或者 time index满了</li>
+</ol>
+<p>下面是写消息时创建出新的segment时server的输出日志：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[2017-04-05 17:14:29,776] DEBUG Rolling new log segment in test-11 (log_size = 1006/1024&#125;, index_size = 0/1310720, time_index_size = 1/873813, inactive_time_ms = 184193/604800000). (kafka.log.Log)</span><br></pre></td></tr></table></figure></p>
+<h3 id="将消息添加到LogSegment中"><a href="#将消息添加到LogSegment中" class="headerlink" title="将消息添加到LogSegment中"></a>将消息添加到LogSegment中</h3><p>LogSegment的参数主要有：<br>: log：File类型的MessageSet，该Set中包含一个FileChannel，能够从ByteBuffer中读取数据<br>: index: OffsetIndex，逻辑Offset到物理文件位置的索引<br>: timeIndex：TimeIndex，时间戳到物理位置的索引<br>: baseOffset：第一个offset</p>
+<h4 id="写消息的操作："><a href="#写消息的操作：" class="headerlink" title="写消息的操作："></a>写消息的操作：</h4><p>将AppendInfo中的消息写入到LogSegment中的FileChannel中<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def writeFullyTo(channel: GatheringByteChannel): Int = &#123;</span><br><span class="line">  buffer.mark()</span><br><span class="line">  var written = 0</span><br><span class="line">  while (written &lt; sizeInBytes)</span><br><span class="line">    written += channel.write(buffer)</span><br><span class="line">  buffer.reset()</span><br><span class="line">  written</span><br><span class="line">&#125;</span><br><span class="line"> _size.getAndAdd(written)</span><br></pre></td></tr></table></figure></p>
+<h4 id="FileMessageSet的search操作"><a href="#FileMessageSet的search操作" class="headerlink" title="FileMessageSet的search操作"></a><strong>FileMessageSet的search操作</strong></h4><p>根据offset或者时间戳是从Log中读取消息的常见方法。FileMessageSet提供对应的两个方法：<code>searchForOffsetWithSize</code>和<code>searchForTimestamp</code>。前者是从FileMessageSet的给定位置往后搜索第一个大于等于目标offset的消息，返回的是Offset&amp;Position，后者是从给定位置往后搜索第一个时间戳大于等于目标时间戳的消息，返回Timestamp&amp;Offset。</p>
+<p>下图描述的是从0开始搜索offset≥1003的消息：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-4-18/34749506-file_1492481684531_13fee.png" alt=""></p>
+<h4 id="写OffsetIndex"><a href="#写OffsetIndex" class="headerlink" title="写OffsetIndex"></a>写OffsetIndex</h4><p>OffsetIndex中并不会记录所有Offset的映射关系，写入Index的时机由<code>index.interval.bytes</code>参数(default：4096)控制，当segment中积累的消息数量大于该参数时，会将此次写入segment中的MessageSet的第一个消息的offset写入OffsetIndex中：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">if(bytesSinceLastIndexEntry &gt; indexIntervalBytes) &#123;</span><br><span class="line">  index.append(firstOffset, physicalPosition)</span><br><span class="line">  timeIndex.maybeAppend(maxTimestampSoFar, offsetOfMaxTimestamp)</span><br><span class="line">  bytesSinceLastIndexEntry = 0</span><br><span class="line">&#125;</span><br><span class="line">bytesSinceLastIndexEntry += messages.sizeInBytes</span><br></pre></td></tr></table></figure></p>
+<p>index.append的具体操作如下：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">if (_entries == 0 || offset &gt; _lastOffset) &#123;</span><br><span class="line">    mmap.putInt((offset - baseOffset).toInt)</span><br><span class="line">    mmap.putInt(position)</span><br><span class="line">    _entries += 1</span><br><span class="line">    _lastOffset = offset</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面的操作是将offset相对这个Segmet的baseOffset的偏移值以及物理地址填入到OffsetIndex中定义的<code>MappedByteBuffer</code>。</p>
+<blockquote>
+<p>之所以使用相对偏移值是出于节省存储空间的考虑，相对偏移值只需要4位空间就能存储，而MessageSet中的offset占8位。</p>
+</blockquote>
+<h4 id="写TimeIndex"><a href="#写TimeIndex" class="headerlink" title="写TimeIndex"></a>写TimeIndex</h4><p>在每次执行append操作时，TimeIndex记录的是最大时间戳及其对应的offset的索引。<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">if (timestamp &gt; lastEntry.timestamp) &#123;</span><br><span class="line">  mmap.putLong(timestamp)</span><br><span class="line">  mmap.putInt((offset - baseOffset).toInt)</span><br><span class="line">  _entries += 1</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>写入Buffer中的是时间戳以及<strong>相对偏移量</strong></p>
+<h2 id="更新LogEndOffset"><a href="#更新LogEndOffset" class="headerlink" title="更新LogEndOffset"></a>更新LogEndOffset</h2><p>上面的分析中提到过每个Log都维护了一个记录下一个offset的变量——<code>nextOffsetMetadata</code>,该变量是LogOffsetMetadata类型的：<br>: messageOffset：绝对偏移值<br>: segmentBaseOffset：LogSegment的baseOffset值<br>: relativePositionInSegment：LogSegment的大小(字节数)，根据字节数可以定位到这条消息在segment中的物理位置</p>
+<p>每次append操作都会执行：<br><code>nextOffsetMetadata = new LogOffsetMetadata(messageOffset, activeSegment.baseOffset, activeSegment.size.toInt)</code><br>其中：</p>
+<ul>
+<li>messageOffset为 <em>AppendInfo.lastOffset+1</em></li>
+<li>activeSegment是当前可用的segment</li>
+<li>activeSegment.size由<code>_size.get()</code>，这个_size正是在上面往segment中写消息时进行更新的，每次增加的值是写入channel中的字节数。</li>
+</ul>
+<p>下面这张图生动描述了这个更新的操作：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-4-17/96991802-file_1492421401594_f659.png" alt=""></p>
+<ul>
+<li>绿色的代表<em>activeSegment</em>，当前的<em>nextOffsetMetadata</em>为10(指的是messageOffset)</li>
+<li>写入10条消息后，<em>nextOffsetMetadata</em>更新为21</li>
+<li>再次写入10条消息后，更新为31</li>
+<li>再来10条消息，无法写入，执行roll操作新建一个segment,messageOffset值未改变，不过activeSegment变化了</li>
+<li>将10条消息写入新的segment中，更新为41</li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/04/04/Kafka-Coordinator实现细节/" rel="next" title="Kafka Coordinator实现细节">
+                <i class="fa fa-chevron-left"></i> Kafka Coordinator实现细节
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC8zNTQ1NC8xMTk5MA"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg"
+                alt="fbZhu" />
+            
+              <p class="site-author-name" itemprop="name">fbZhu</p>
+              <p class="site-description motion-element" itemprop="description">人为什么越长大越孤单？
+答:内心中有秘密,无法诉说
+</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#KafkaApis"><span class="nav-number">1.</span> <span class="nav-text">KafkaApis</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#handleProducerRequest"><span class="nav-number">1.1.</span> <span class="nav-text">handleProducerRequest</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ack规则"><span class="nav-number">1.2.</span> <span class="nav-text">ack规则</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ReplicaManager-appendMessages"><span class="nav-number">2.</span> <span class="nav-text">ReplicaManager.appendMessages</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ReplicaManager-appendToLocalLog"><span class="nav-number">3.</span> <span class="nav-text">ReplicaManager.appendToLocalLog</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Partition-appendRecordsToLeader"><span class="nav-number">4.</span> <span class="nav-text">Partition.appendRecordsToLeader</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#判断当前broker是否是parition的leader"><span class="nav-number">4.0.1.</span> <span class="nav-text">判断当前broker是否是parition的leader</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#备份数不满足条件的消息不会写入"><span class="nav-number">4.0.2.</span> <span class="nav-text">备份数不满足条件的消息不会写入</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Log-append"><span class="nav-number">5.</span> <span class="nav-text">Log.append</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ByteBufferMessageSet"><span class="nav-number">5.1.</span> <span class="nav-text">ByteBufferMessageSet</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Message的组成"><span class="nav-number">5.1.1.</span> <span class="nav-text">Message的组成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#迭代器的实现"><span class="nav-number">5.1.2.</span> <span class="nav-text">迭代器的实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LogAppendInfo的生成"><span class="nav-number">5.1.3.</span> <span class="nav-text">LogAppendInfo的生成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#消息的进一步校验"><span class="nav-number">5.1.4.</span> <span class="nav-text">消息的进一步校验</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-topic清理策略"><span class="nav-number">5.1.4.1.</span> <span class="nav-text">1.topic清理策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-版本与magicValue"><span class="nav-number">5.1.4.2.</span> <span class="nav-text">2. 版本与magicValue</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-解析非压缩消息"><span class="nav-number">5.1.4.3.</span> <span class="nav-text">3. 解析非压缩消息</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-压缩消息的处理"><span class="nav-number">5.1.4.4.</span> <span class="nav-text">4.压缩消息的处理</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#找到合适的segment"><span class="nav-number">5.2.</span> <span class="nav-text">找到合适的segment</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#将消息添加到LogSegment中"><span class="nav-number">5.2.1.</span> <span class="nav-text">将消息添加到LogSegment中</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#写消息的操作："><span class="nav-number">5.2.1.1.</span> <span class="nav-text">写消息的操作：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#FileMessageSet的search操作"><span class="nav-number">5.2.1.2.</span> <span class="nav-text">FileMessageSet的search操作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#写OffsetIndex"><span class="nav-number">5.2.1.3.</span> <span class="nav-text">写OffsetIndex</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#写TimeIndex"><span class="nav-number">5.2.1.4.</span> <span class="nav-text">写TimeIndex</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#更新LogEndOffset"><span class="nav-number">5.3.</span> <span class="nav-text">更新LogEndOffset</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fbZhu</span>
+
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/three.min.js"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/canvas_sphere.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.4.js"></script>
+  <script>AV.initialize("cea0JXdngKbekqyUcytEll8T-gzGzoHsz", "4K0JxrNpvBK8dDrqbkSm4axL");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
