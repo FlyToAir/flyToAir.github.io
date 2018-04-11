@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="google-site-verification" content="bxXYqd7tQuaxEZXTyg2jG5HJvQhRp0bpb5KzceDpPsU" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Kafka," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="[TOC] start up controller 引入Controller的目的是为了减小ZK的压力以及降低整个分布式系统的复杂度。  注册监听向zk注册监听两个实例：  SessionExpirationListener：如果session时效了，zk会负责重连的，kafka这边不需要处理 LeaderChangeListener：监听集群的leader(即controller)发生改变，对于">
+<meta name="keywords" content="Kafka">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Controller工作原理">
+<meta property="og:url" content="http://yoursite.com/2017/04/28/Controller工作原理/index.html">
+<meta property="og:site_name" content="天外飞猪的博客">
+<meta property="og:description" content="[TOC] start up controller 引入Controller的目的是为了减小ZK的压力以及降低整个分布式系统的复杂度。  注册监听向zk注册监听两个实例：  SessionExpirationListener：如果session时效了，zk会负责重连的，kafka这边不需要处理 LeaderChangeListener：监听集群的leader(即controller)发生改变，对于">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-28/46811832-file_1493361667528_90d4.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-10/19313383-file_1494385172260_105ee.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-28/73504112-file_1493368426005_d1af.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-9/22464449-file_1494308280134_3a39.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-8/33844974-file_1494227473975_176f5.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-8/38963849-file_1494228534238_a5f5.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-10/21966269-file_1494383478257_ab7f.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-8/87366899-file_1494230972294_516e.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-8/90590726-file_1494231294553_16ebf.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-8/47635529-file_1494231488624_78ec.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-9/61651338-file_1494313792247_3a25.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-11/41268388-file_1494473080893_14c67.png">
+<meta property="og:updated_time" content="2018-04-11T05:51:20.688Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Controller工作原理">
+<meta name="twitter:description" content="[TOC] start up controller 引入Controller的目的是为了减小ZK的压力以及降低整个分布式系统的复杂度。  注册监听向zk注册监听两个实例：  SessionExpirationListener：如果session时效了，zk会负责重连的，kafka这边不需要处理 LeaderChangeListener：监听集群的leader(即controller)发生改变，对于">
+<meta name="twitter:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-28/46811832-file_1493361667528_90d4.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2017/04/28/Controller工作原理/"/>
+
+
+
+
+
+  <title>Controller工作原理 | 天外飞猪的博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">天外飞猪的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            Tags
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/04/28/Controller工作原理/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Controller工作原理</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-04-28T10:55:56+08:00">
+                2017-04-28
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2017/04/28/Controller工作原理/" class="leancloud_visitors" data-flag-title="Controller工作原理">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>[TOC]</p>
+<h1 id="start-up-controller"><a href="#start-up-controller" class="headerlink" title="start up controller"></a>start up controller</h1><blockquote>
+<p>引入Controller的目的是为了减小ZK的压力以及降低整个分布式系统的复杂度。</p>
+</blockquote>
+<h2 id="注册监听"><a href="#注册监听" class="headerlink" title="注册监听"></a><span id="register">注册监听</span></h2><p>向zk注册监听两个实例：</p>
+<ul>
+<li>SessionExpirationListener：如果session时效了，zk会负责重连的，kafka这边不需要处理</li>
+<li>LeaderChangeListener：监听集群的leader(即controller)发生改变，对于原leader需要执行resign的操作(<code>onControllerResignation</code>)将Leadership上交:<ul>
+<li>de-register listeners：IsrChangeNotificationListener、ReassignedPartitionsListener、PreferredReplicaElectionListener、ReassignedPartitionsIsrChangeListeners</li>
+<li>关闭的功能有：删除topic、自动重平衡管理、replica与partition的状态机等</li>
+</ul>
+</li>
+</ul>
+<h2 id="start-Elector"><a href="#start-Elector" class="headerlink" title="start Elector"></a>start Elector</h2><blockquote>
+<p>首先要判断下zookeeper下面是否存在永久节点：<code>/controller</code>，该节点存储着controller的信息，如：<code>{&quot;version&quot;:1,&quot;brokerid&quot;:2,&quot;timestamp&quot;:&quot;1493345638688&quot;}</code></p>
+</blockquote>
+<h3 id="抢注leader"><a href="#抢注leader" class="headerlink" title="抢注leader"></a>抢注leader</h3><ul>
+<li>从<em>/controller</em>目录下获取controllerId，成功获取到就返回<em>amILeader</em>。这样就能确保如果有broker注册controller(向zk的/controller目录下面创建临时节点)成功，其他broker就不再尝试注册</li>
+<li>抢注leader：使用<code>ZKCheckedEphemeral</code>注册临时节点，下面是controller(broker)关闭的情况下，broker2注册controller成功的输出日志：<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[2017-04-28 10:13:58,689] INFO Creating /controller (is it secure? false) (kafka.utils.ZKCheckedEphemeral)</span><br><span class="line">[2017-04-28 10:13:58,692] INFO Result of znode creation is: OK (kafka.utils.ZKCheckedEphemeral)</span><br><span class="line">[2017-04-28 10:13:58,693] INFO 2 successfully elected as leader (kafka.server.ZookeeperLeaderElector)</span><br><span class="line">[2017-04-28 10:13:59,592] INFO New leader is 2 (kafka.server.ZookeeperLeaderElector$LeaderChangeListener)</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="onControllerFailover"><a href="#onControllerFailover" class="headerlink" title="onControllerFailover"></a>onControllerFailover</h3><p>在抢注成功后，该broker需要担负起Leader的职责，包括以下几个方面：</p>
+<h4 id="1-改朝换代"><a href="#1-改朝换代" class="headerlink" title="1. 改朝换代"></a><strong>1. 改朝换代</strong></h4><p>读取 <code>/controller_epoch</code> 的值，获取当前controller的纪元(朝代)，然后增加1</p>
+<h4 id="2-注册ZK监听程序"><a href="#2-注册ZK监听程序" class="headerlink" title="2. 注册ZK监听程序"></a><strong>2. 注册ZK监听程序</strong></h4><p>对ZK上的节点进行监听：</p>
+<ul>
+<li><strong>/admin/reassign_partitions</strong>：监听partition重分配的动作</li>
+<li><strong>isr_change_notification</strong>：该节点用于通知parition的ISR变化</li>
+<li><strong>/admin/preferred_replica_election</strong>:</li>
+</ul>
+<p>以上都是通过controller注册的，下面是通过特定的状态机向ZK注册监听的：</p>
+<ul>
+<li><strong>PartitionStateMachine</strong>：描述parition的状态机<ul>
+<li><em>/brokers/topics</em>：<code>TopicChangeListener</code></li>
+<li><em>/admin/delete_topics</em>：<code>DeleteTopicsListener</code></li>
+</ul>
+</li>
+<li><strong>replicaStateMachine</strong>：描述replicas的状态机<ul>
+<li><em>/brokers/ids</em>：<code>BrokerChangeListener</code></li>
+</ul>
+</li>
+</ul>
+<p>最后，对每个topic添加<code>PartitionModificationsListener</code>,zk路径为：<strong>/brokers/topics/topic_name</strong></p>
+<h4 id="3-初始化controller上下文"><a href="#3-初始化controller上下文" class="headerlink" title="3. 初始化controller上下文"></a><strong>3. 初始化controller上下文</strong></h4><p>收集：brokers、topics、partitions-leader、ISR等信息；开启<code>ControllerChannelManager</code>和<code>partitionStateMachine</code></p>
+<h4 id="4-进行分区重分配和分区leader选举操作"><a href="#4-进行分区重分配和分区leader选举操作" class="headerlink" title="4. 进行分区重分配和分区leader选举操作"></a><strong>4. 进行分区重分配和分区leader选举操作</strong></h4><p>详见</p>
+<ul>
+<li><a href="#PR">partition reassign</a></li>
+<li><a href="#PRE">PreferredReplicaElection</a></li>
+</ul>
+<h4 id="5-发送metadata数据"><a href="#5-发送metadata数据" class="headerlink" title="5. 发送metadata数据"></a><strong>5. 发送metadata数据</strong></h4><p>发送数据到集群上所有的broker，包括live和shutdown的</p>
+<h4 id="6-开启分区重平衡线程"><a href="#6-开启分区重平衡线程" class="headerlink" title="6. 开启分区重平衡线程"></a><strong>6. 开启分区重平衡线程</strong></h4><p><a href="#rebalance">分区的重平衡</a>是否开启由参数<code>auto.leader.rebalance.enable</code>控制，默认开启；线程的执行间隔由<code>leader.imbalance.check.interval.seconds</code>控制，默认为300</p>
+<h3 id="所有触发Elect的情况"><a href="#所有触发Elect的情况" class="headerlink" title="所有触发Elect的情况"></a>所有触发Elect的情况</h3><h3 id="partition-reassign"><a href="#partition-reassign" class="headerlink" title="partition reassign"></a><span id="PR">partition reassign</span></h3><p>在Kafka-manager上对topic——testReassign(包含3个分区)进行手动partition分配：</p>
+<p>这是重分配之前的分区情况：</p>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-4-28/46811832-file_1493361667528_90d4.png" alt=""></p>
+<p>调整0和1的分区Replicas：</p>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-5-10/19313383-file_1494385172260_105ee.png" alt=""></p>
+<p>执行<strong>Reassign Partitions</strong>，观察日志：</p>
+<p><em>PartitionsReassignedListener</em>感知到了ZK上<em>/admin/reassign_partitions</em>节点上内容发生了变化<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[PartitionsReassignedListener on 2]: Partitions reassigned listener fired for path /admin/reassign_partitions. Record partitions to be reassigned &#123;&quot;version&quot;:1,&quot;partitions&quot;:[&#123;&quot;topic&quot;:&quot;testReassign&quot;,&quot;partition&quot;:2,&quot;replicas&quot;:[1,2]&#125;,&#123;&quot;topic&quot;:&quot;testReassign&quot;,&quot;partition&quot;:1,&quot;replicas&quot;:[2,3]&#125;,&#123;&quot;topic&quot;:&quot;testReassign&quot;,&quot;partition&quot;:0,&quot;replicas&quot;:[3,1]&#125;]&#125;</span><br></pre></td></tr></table></figure></p>
+<p>由于分区2未进行重分配，其原来的replicas与现在的一致，因此无视该Reassign请求：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">kafka.common.KafkaException: Partition [testReassign,2] to be reassigned is already assigned to replicas 1,2. Ignoring request for partition reassignment</span><br></pre></td></tr></table></figure></p>
+<p>接下来对分区0和1进行重分配，就拿1来说：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[Controller 2]: Handling reassignment of partition [testReassign,1] to new replicas 2,3 </span><br><span class="line">[Controller 2]: New replicas 2,3 for partition [testReassign,1] being reassigned not yet caught up with the leader </span><br><span class="line">[Controller 2]: Updated path /brokers/topics/testReassign with &#123;&quot;version&quot;:1,&quot;partitions&quot;:&#123;&quot;2&quot;:[1,2],&quot;0&quot;:[2,3],&quot;1&quot;:[2,3,1]&#125;&#125; for replica assignment </span><br><span class="line">[Controller 2]: Updated assigned replicas for partition [testReassign,1] being reassigned to 2,3,1  </span><br><span class="line">[[Controller 2]: Updating leader epoch for partition [testReassign,1]. </span><br><span class="line">[Controller 2]: Updated leader epoch for partition [testReassign,1] to 1 </span><br><span class="line">[Replica state machine on controller 2]: Invoking state change to NewReplica for replicas [Topic=testReassign,Partition=1,Replica=2] </span><br><span class="line">[Controller 2]: Waiting for new replicas 2,3 for partition [testReassign,1] being reassigned to catch up with the leader</span><br></pre></td></tr></table></figure></p>
+<p><strong>疑问</strong>：往<strong>/brokers/topics/testReassign</strong>中写入的为啥是[2,3,1]而不是[2,3]呢？留个坑：在<em>KafkaController.onPartitionReassignment</em>方法中找答案吧~<br>该方法在多处被调用<br><img src="http://olt6kofv9.bkt.clouddn.com/17-4-28/73504112-file_1493368426005_d1af.png" alt=""></p>
+<h3 id="partition-state-machine"><a href="#partition-state-machine" class="headerlink" title="partition state machine"></a><strong>partition state machine</strong></h3><p>下图简单描述了partition的4种状态：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-5-9/22464449-file_1494308280134_3a39.png" alt=""></p>
+<p>状态机通过一个map类型的<code>partitionState</code>来存放所有分区的当前状态。</p>
+<h4 id="start-up"><a href="#start-up" class="headerlink" title="start up"></a><strong>start up</strong></h4><p>此时cluster的controller已经产生，controller通过读取ZK的partition和ISR节点信息判断每个partition的当前状态。</p>
+<p>具体是判断每个分区对应的<em>LeaderIsrAndControllerEpoch</em>信息与当前的Epoch是否吻合：</p>
+<ul>
+<li>如果吻合，则是OnLine状态</li>
+<li>存在但不吻合，则是OffLine状态</li>
+<li>不存在信息，则是New状态</li>
+</ul>
+<blockquote>
+<p>划分好了当前的状态后，下面要将new和offline的转化成Online</p>
+</blockquote>
+<p>如何转化呢？当然是选举leader咯，关键代码在<code>OfflinePartitionLeaderSelector</code>这个类里，下面这个表是选举时遇到的几种情况<br>ISR|replicas|result<br>—|—|—<br>(1,2)|(1,2)|leader = 1<br>null|(2,3)|unclean enabled ? leader=2 : <em>NoReplicaOnlineException</em><br>null|null|<em>NoReplicaOnlineException</em></p>
+<p>如当前有个repilca设置为1的topic：”jjhtest”，当前leader与isr的分配为：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-5-8/33844974-file_1494227473975_176f5.png" alt=""></p>
+<p>接下来我重启broker3，会发生什么呢？</p>
+<ol>
+<li><p>由于每个分区的replicas都是固定的(不考虑手动分配)，关闭broker3将导致分区1,4,7的replicas中无可用的broker，这3个分区将无法分配到broker，进入<strong>offline</strong>状态</p>
+<blockquote>
+<p>如果分区的replica&gt;1，在<code>shutDownBroker</code>方法中：broker作为leader的分区状态转移是online ==&gt; online，leader选举的selector为：<code>ControlledShutdownPartitionLeaderSelector</code></p>
+</blockquote>
+</li>
+<li><p>broker3恢复后，以上3个分区由<strong>offline</strong>状态向<strong>online</strong>转变，触发leader的选举</p>
+</li>
+<li><p>选举的过程：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-5-8/38963849-file_1494228534238_a5f5.png" alt=""></p>
+<h4 id="partitionReplicaAssignment"><a href="#partitionReplicaAssignment" class="headerlink" title="partitionReplicaAssignment"></a><span id="PRA"><strong>partitionReplicaAssignment</strong></span></h4><p>该变量是个<em>Mutable</em> Map，存放的是每个分区对应的replicas信息。这个信息有两个来源：</p>
+</li>
+<li><p><strong>TopicChangeListener</strong>监听ZK上的topic变化，比如新增了topic，那么就会从ZK获取分区的replicas分配信息</p>
+</li>
+<li><a href="#PML"><strong>PartitionModificationsListener</strong></a>监听parition的变化，比如新增了分区，会从ZK获取新增分区的replicas信息。</li>
+</ol>
+<h4 id="electLeaderForPartition"><a href="#electLeaderForPartition" class="headerlink" title="electLeaderForPartition"></a><strong>electLeaderForPartition</strong></h4><p>当partition的状态由offline或者online ==&gt; online时，会通过不同的<em>PartitionLeaderSelector</em>选举leader(<em>LeaderSelector缩写为LS</em>)：</p>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-5-10/21966269-file_1494383478257_ab7f.png" alt=""></p>
+<p>每次成功执行了leader select，都会更新<strong>leader cache</strong>(<code>controllerContext.partitionLeadershipInfo</code>)</p>
+<h3 id="preferred-replica-election"><a href="#preferred-replica-election" class="headerlink" title="preferred replica election"></a><span id="PRE">preferred replica election</span></h3><blockquote>
+<p>在controller启动的过程中会执行一次<strong>preferredReplicaElection</strong>(简称<strong>PRE</strong>)，并创建一个间隔为<code>leader.imbalance.check.interval.seconds</code>(default:300)的定时任务执行<strong>PartitionRebalance</strong>操作，该操作会触发<strong>PRE</strong></p>
+</blockquote>
+<p><strong>kafka平衡策略的实现依赖于以下几方面的因素</strong>：</p>
+<ol>
+<li>在不考虑手动分配分区的情况下，每个分区分配的<strong>Replicas</strong>是写死的，包括顺序都是固定的。</li>
+<li>在出现broker挂掉的情况下，<strong>leader的重新选举能保证消息不丢失(未触发脏选举)，而PRE(首选备份选举)能保证broker恢复后分区的leader能均衡分布在集群上。</strong></li>
+</ol>
+<h4 id="小实验"><a href="#小实验" class="headerlink" title="小实验"></a>小实验</h4><p>有一个分区数为6，备份数为2的topic：”TheOne”，当前的分配状态为：</p>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-5-8/87366899-file_1494230972294_516e.png" alt=""></p>
+<ul>
+<li><p>关闭broker3后分区4和5的leader重新选举：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-5-8/90590726-file_1494231294553_16ebf.png" alt=""></p>
+</li>
+<li><p>broker3恢复后，又重新加入到了各个topic的ISR中(IsrChangeNotificationListener被触发)：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-5-8/47635529-file_1494231488624_78ec.png" alt=""></p>
+</li>
+<li><p>一段时间后，触发PRE：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[Controller 1]: Starting preferred replica leader election for partitions [TheOne,5] (kafka.controller.KafkaController)</span><br><span class="line">[Partition state machine on Controller 1]: Invoking state change to OnlinePartition for partitions [TheOne,5] (kafka.controller.PartitionStateMachine)</span><br><span class="line">[PreferredReplicaPartitionLeaderSelector]: Current leader 1 for partition [TheOne,5] is not the preferred replica. Trigerring preferred replica leader election (kafka.controller.PreferredReplicaPartitionLeaderSelector)</span><br><span class="line">[Controller 1]: Partition [TheOne,5] completed preferred replica leader election. New leader is 3 (kafka.controller.KafkaController)</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>leader &amp; ISR又恢复了初始状态，达到了均衡。</p>
+<p>PRE的选举操作由<strong>preferredReplicaPartitionLeaderSelector</strong>完成，状态为<strong>online</strong> ==&gt; <strong>online</strong></p>
+<blockquote>
+<p><strong>思考</strong>：动态扩展broker如何实现？动态扩展broker能否实现分区的均衡扩展呢？</p>
+</blockquote>
+<h3 id="partition-reblance"><a href="#partition-reblance" class="headerlink" title="partition reblance"></a><span id="rebalance">partition reblance</span></h3><ul>
+<li>分区重平衡的间隔上面提到过了，默认为5分钟。</li>
+<li><p>触发重平衡由失衡率(imbalanceRatio)决定:<br>$$ ratio = Sum(partitonsNotLeaded)/Sum(partitonsShouldLeaded)$$<br>当ratio大于<em>leader.imbalance.per.broker.percentage</em>(默认10%)时会触发重平衡</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">DEBUG: topics not in preferred replica Map() (kafka.controller.KafkaController)</span><br><span class="line">TRACE: leader imbalance ratio for broker 2 is 0.000000 (kafka.controller.KafkaController)</span><br><span class="line">DEBUG: topics not in preferred replica Map() (kafka.controller.KafkaController)</span><br><span class="line">TRACE: leader imbalance ratio for broker 1 is 0.000000 (kafka.controller.KafkaController)</span><br><span class="line">DEBUG: topics not in preferred replica Map([TheOne,4] -&gt; List(3, 2), [TheOne,5] -&gt; List(3, 1),...) (kafka.controller.KafkaController)</span><br><span class="line">TRACE: leader imbalance ratio for broker 3 is 0.951613 (kafka.controller.KafkaController)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>重平衡的过程主要是执行<strong>PRE</strong></p>
+</li>
+</ul>
+<h3 id="Replica-state-machine"><a href="#Replica-state-machine" class="headerlink" title="Replica state machine"></a><strong>Replica state machine</strong></h3><p>与partition相比多了3种状态</p>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-5-9/61651338-file_1494313792247_3a25.png" alt=""></p>
+<h4 id="create-topic"><a href="#create-topic" class="headerlink" title="create topic"></a><span id="createTopic"><strong>create topic</strong></span></h4><p>新建topic涉及到partition以及replica状态的改变：</p>
+<ul>
+<li><strong>NoExistent ==&gt; New</strong><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Invoking state change to NewPartition for partitions [TT,6],...(kafka.controller.PartitionStateMachine)</span><br><span class="line">Invoking state change to NewReplica for replicas [Topic=TT,Partition=6,Replica=2],[Topic=TT,Partition=6,Replica=3],... (kafka.controller.ReplicaStateMachine)</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>在新建topic后，ZK就会为该topic分配replicas</p>
+<ul>
+<li><strong>New ==&gt; Online</strong><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">#partition state machine</span><br><span class="line">Invoking state change to OnlinePartition for partitions [TT,6],...</span><br><span class="line">Live assigned replicas for partition [TT,6] are: [List(2, 3)]</span><br><span class="line">Initializing leader and isr for partition [TT,6] to (Leader:2,ISR:2,3,LeaderEpoch:0,ControllerEpoch:30)</span><br><span class="line">#replica state machine</span><br><span class="line">Invoking state change to OnlineReplica for replicas [Topic=TT,Partition=6,Replica=2],[Topic=TT,Partition=6,Replica=3],...</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h4 id="ReplicaDeletionStarted"><a href="#ReplicaDeletionStarted" class="headerlink" title="ReplicaDeletionStarted"></a><strong>ReplicaDeletionStarted</strong></h4><p>该状态一般在进行手动分区分配时产生的，以<a href="#PR">parition reassign实验</a>试验中的分区1为例：replicas：[3,1] ==&gt; [2,3]</p>
+<ul>
+<li>broker2成为<strong>NewReplica</strong>：<code>Invoking state change to NewReplica for replicas [Topic=testReassign,Partition=1,Replica=2]</code></li>
+<li>broker2进入<strong>OnlineReplica</strong>：<code>Invoking state change to OnlineReplica for replicas [Topic=testReassign,Partition=1,Replica=2]</code></li>
+<li><p>broker1成为<strong>OfflineReplica</strong>，从ISR中移除：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Invoking state change to OfflineReplica for replicas [Topic=testReassign,Partition=1,Replica=1]</span><br><span class="line">Removing replica 1 from ISR 3,1 for partition [testReassign,1]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>broker1进入<strong>ReplicaDeletionStarted</strong>状态:<code>Invoking state change to ReplicaDeletionStarted for replicas [Topic=testReassign,Partition=1,Replica=1]</code></p>
+</li>
+<li>broker1进入<strong>ReplicaDeletionSuccessful</strong> ：<code>nvoking state change to ReplicaDeletionSuccessful for replicas [Topic=testReassign,Partition=1,Replica=1]</code></li>
+<li>broker1进入<strong>NonExistentReplica</strong>：<code>Invoking state change to NonExistentReplica for replicas [Topic=testReassign,Partition=1,Replica=1]</code></li>
+</ul>
+<h1 id="ZKListener-详解"><a href="#ZKListener-详解" class="headerlink" title="ZKListener 详解"></a>ZKListener 详解</h1><blockquote>
+<p>下面对Controller中使用到的一些监听ZK节点及子节点变化的listener进行梳理</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>listener</th>
+<th>监听的节点</th>
+<th>用处</th>
+<th>处理逻辑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BrokerChangeListener</td>
+<td>/brokers/ids 子节点</td>
+<td>在ReplicaStateMachine中使用</td>
+<td><a href="#BCL">BCL</a></td>
+</tr>
+<tr>
+<td>ISRChangeNotificationListener</td>
+<td>/isr_change_notification 子节点</td>
+<td>Controller用于监听各个partition的ISR变化</td>
+<td><a href="#ICNL">ICNL</a></td>
+</tr>
+<tr>
+<td>PartitionModificationsListener</td>
+<td>/brokers/topics/topic_name</td>
+<td>监听对应topic分区的变化(只允许增加)</td>
+<td><a href="#PML">PML</a></td>
+</tr>
+<tr>
+<td>LeaderChangeListener</td>
+<td>/controller</td>
+<td>监听集群leader的变化</td>
+<td><a href="#register">注册监听</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="Broker-Change-Listener"><a href="#Broker-Change-Listener" class="headerlink" title="Broker Change Listener"></a><span id="BCL">Broker Change Listener</span></h2><p>/brokers/ids目录下有多个以broker_id命名的子节点，每个子节点上存储着与broker相关的信息，如：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;&quot;jmx_port&quot;:9999,&quot;timestamp&quot;:&quot;1493886226618&quot;,&quot;endpoints&quot;:[&quot;PLAINTEXT://ip:9092&quot;],&quot;host&quot;:&quot;ip&quot;,&quot;version&quot;:3,&quot;port&quot;:9092&#125;</span><br></pre></td></tr></table></figure></p>
+<p>当这些子节点的内容发生变化时，controller感知到后会统计出变化的情况：</p>
+<ul>
+<li>broker2 shutdown：<code>Newly added brokers: , deleted brokers: 2, all live brokers: 1,3</code></li>
+<li>broker2 startup： <code>Newly added brokers: 2, deleted brokers: , all live brokers: 1,2,3</code></li>
+</ul>
+<h3 id="delete-broker"><a href="#delete-broker" class="headerlink" title="delete broker"></a>delete broker</h3><h4 id="shutdownBroker"><a href="#shutdownBroker" class="headerlink" title="shutdownBroker"></a><strong>shutdownBroker</strong></h4><blockquote>
+<p>该方法与<strong>KafkaServer</strong>中的<em>shutdown</em>方法的区别在于前者用于处理<code>ControlledShutdown</code>请求，将分区的职责转移出去，而后者是关闭brokerServer的一堆服务。</p>
+</blockquote>
+<p>需要处理的分区为：<br>$ List(partition) = { partition | id ∈ Replicas(partition) &amp;&amp; replicaFactor(partition) &gt; 1 } $</p>
+<ol>
+<li>对于作为leader的分区，执行leader的重选举(<code>ControlledShutdownLS</code>)</li>
+<li>对于作为普通replica的分区：<ul>
+<li>关闭<strong>ReplicaRequest</strong>,如broker3是<em>TheOne-1</em>的replica，在关闭broker3时controller会向3发送关闭replica请求的<strong>请求</strong>：<code>The stop replica request (delete = false) sent to broker 3 is [Topic=TheOne,Partition=1,Replica=3](kafka.controller.ControllerBrokerRequestBatch)</code><ul>
+<li>broker3收到<strong>StopReplica</strong>请求后调用<em>ReplicaManager</em>的<em>stopReplicas</em>移除了相关的replica的Fetcher：<code>[ReplicaFetcherManager on broker 3] Removed fetcher for partitions TheOne-1</code></li>
+</ul>
+</li>
+<li>将broker3的Replica状态置为<strong>OfflineReplica</strong></li>
+</ul>
+</li>
+</ol>
+<h4 id="onBrokerFailure"><a href="#onBrokerFailure" class="headerlink" title="onBrokerFailure"></a><strong>onBrokerFailure</strong></h4><p>步骤如下：</p>
+<ol>
+<li>在<em>shutdownBroker</em>的处理的分区中有一项要求是：replicaFactor &gt; 1，而对于replicaFactor = 1的分区来说，如果其leader所在的broker关闭了，那么该分区的状态将置为<strong>OfflinePartition</strong>。筛选的依据是其leader是否为关闭的broker(其他类型的分区在上面的流程中要么leader重新选举过了，要么只是改变ISR)</li>
+<li>尝试使用<code>OfflinePartitionLS</code>将offline和new类型的partition转化为<strong>Online</strong></li>
+<li><p>集体性的将该broker的replica的状态置为<strong>OfflineReplica</strong></p>
+<blockquote>
+<p><del>感觉重复操作了，因为shutdownBroker阶段也有这操作。</del>不同点在于shutdownBroker只处理replica&gt;1分区的replica状态。</p>
+</blockquote>
+</li>
+<li><p>如果第一步操作未执行，那么将向其他broker发送一个<strong>UpdateMetadataRequest</strong></p>
+<h3 id="onBrokerStartup"><a href="#onBrokerStartup" class="headerlink" title="onBrokerStartup"></a>onBrokerStartup</h3><p>主要处理的依然是分区、replica、ISR以及leader的转化：</p>
+</li>
+<li><p>发送<strong>UpdateMetadataRequest</strong>（具体原因不明）</p>
+</li>
+<li>将该broker的replica状态置为<strong>OnlineReplica</strong></li>
+<li>尝试使用<code>OfflinePartitionLS</code>将offline和new类型的partition转化为<strong>Online</strong>，这一步的主要目的是为了将<strong>onBrokerFailue</strong>阶段呗置为<strong>OffLinePartition</strong>的分区恢复成<strong>Online</strong>：<code>[OfflinePartitionLeaderSelector]: No broker in ISR is alive for [jjhtest,1]. Pick the leader from the alive assigned replicas: 3
+ [OfflinePartitionLeaderSelector]: No broker in ISR is alive for [jjhtest,1]. Elect leader 3 from live brokers 3. There is potential data loss.
+ [OfflinePartitionLeaderSelector]: Selected new leader and ISR {&quot;leader&quot;:3,&quot;leader_epoch&quot;:23,&quot;isr&quot;:[3]} for offline partition [jjhtest,1]</code></li>
+<li>判断是否需要执行分区重分配的操作</li>
+</ol>
+<h2 id="ISR-Change-Notification-Listener"><a href="#ISR-Change-Notification-Listener" class="headerlink" title="ISR Change Notification Listener"></a><span id="ICNL">ISR Change Notification Listener</span></h2><p>集群正常运行时/isr_change_notification节点下面是没有子节点的，当ISR发生变化的时候，如重启某个broker，那些ISR原来包含该broker的分区需要调整ISR，因此会创建这些partition的子节点。</p>
+<p>下面是broker3挂掉后，TheOne这个topic的ISR：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-5-11/41268388-file_1494473080893_14c67.png" alt=""></p>
+<p>在broker3恢复后，ISNL感知到了某些partition的ISR发生了变化，进行下面3步操作：</p>
+<ol>
+<li>根据子节点的内容更新对应parition的leader以及ISR cache (从ZK上获取)</li>
+<li>向集群所有节点发送<strong>MetadataRequest</strong>：<code>DEBUG Sending MetadataRequest to Brokers:ArrayBuffer(1, 2, 3) for TopicAndPartitions:Set([TheOne, 2], [TheOne, 4],...)</code></li>
+<li>删除子节点</li>
+</ol>
+<h2 id="Partition-Modifications-Listener"><a href="#Partition-Modifications-Listener" class="headerlink" title="Partition Modifications Listener"></a><span id="PML">Partition Modifications Listener</span></h2><blockquote>
+<p>Contorller为每个topic都设置了一个<em>PartitionModificationsListener</em>，用于监听新增分区的操作</p>
+</blockquote>
+<p>下面是将<em>TheOne</em>的分区数增加3，PML所感知到的信息：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[AddPartitionsListener on 1]: Partition modification trigered &#123;&quot;version&quot;:1,&quot;partitions&quot;:&#123;&quot;8&quot;:[3,2],&quot;4&quot;:[3,2],&quot;5&quot;:[3,1],&quot;6&quot;:[1,3],&quot;1&quot;:[1,3],&quot;0&quot;:[1,2],&quot;2&quot;:[2,3],&quot;7&quot;:[2,1],&quot;3&quot;:[2,1]&#125;&#125; for path /brokers/topics/TheOne</span><br><span class="line">[AddPartitionsListener on 1]: New partitions to be added Map([TheOne,7] -&gt; List(2, 1), [TheOne,6] -&gt; List(1, 3), [TheOne,8] -&gt; List(3, 2))</span><br></pre></td></tr></table></figure></p>
+<p>新增了Partition，ZK已经为这些partition分配了replicas，在ZK上每个topic的分区上存储着的信息如：<code>{&quot;controller_epoch&quot;:30,&quot;leader&quot;:3,&quot;version&quot;:1,&quot;leader_epoch&quot;:0,&quot;isr&quot;:[3,2]}</code></p>
+<p>拿到这些消息后，Controller要做的第一件事就是将新增的分区的replicas信息添加到<a href="#PRA">partitionReplicaAssignment</a>中，接下来才是处理这些新建的分区的状态、leader等，这个操作与<a href="#createTopic">create topic</a>的处理如出一辙，区别在于前者是对新增的分区进行处理，后者是对这个topic的所有分区进行处理</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2017/04/24/ISR消息管理/" rel="next" title="ISR消息管理">
+                <i class="fa fa-chevron-left"></i> ISR消息管理
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/04/04/hello-world/" rel="prev" title="Hello World">
+                Hello World <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC8zNTQ1NC8xMTk5MA"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg"
+                alt="fbZhu" />
+            
+              <p class="site-author-name" itemprop="name">fbZhu</p>
+              <p class="site-description motion-element" itemprop="description">人为什么越长大越孤单？
+答:内心中有秘密,无法诉说
+</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#start-up-controller"><span class="nav-number">1.</span> <span class="nav-text">start up controller</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#注册监听"><span class="nav-number">1.1.</span> <span class="nav-text">注册监听</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#start-Elector"><span class="nav-number">1.2.</span> <span class="nav-text">start Elector</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#抢注leader"><span class="nav-number">1.2.1.</span> <span class="nav-text">抢注leader</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#onControllerFailover"><span class="nav-number">1.2.2.</span> <span class="nav-text">onControllerFailover</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-改朝换代"><span class="nav-number">1.2.2.1.</span> <span class="nav-text">1. 改朝换代</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-注册ZK监听程序"><span class="nav-number">1.2.2.2.</span> <span class="nav-text">2. 注册ZK监听程序</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-初始化controller上下文"><span class="nav-number">1.2.2.3.</span> <span class="nav-text">3. 初始化controller上下文</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-进行分区重分配和分区leader选举操作"><span class="nav-number">1.2.2.4.</span> <span class="nav-text">4. 进行分区重分配和分区leader选举操作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-发送metadata数据"><span class="nav-number">1.2.2.5.</span> <span class="nav-text">5. 发送metadata数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-开启分区重平衡线程"><span class="nav-number">1.2.2.6.</span> <span class="nav-text">6. 开启分区重平衡线程</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#所有触发Elect的情况"><span class="nav-number">1.2.3.</span> <span class="nav-text">所有触发Elect的情况</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#partition-reassign"><span class="nav-number">1.2.4.</span> <span class="nav-text">partition reassign</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#partition-state-machine"><span class="nav-number">1.2.5.</span> <span class="nav-text">partition state machine</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#start-up"><span class="nav-number">1.2.5.1.</span> <span class="nav-text">start up</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#partitionReplicaAssignment"><span class="nav-number">1.2.5.2.</span> <span class="nav-text">partitionReplicaAssignment</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#electLeaderForPartition"><span class="nav-number">1.2.5.3.</span> <span class="nav-text">electLeaderForPartition</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#preferred-replica-election"><span class="nav-number">1.2.6.</span> <span class="nav-text">preferred replica election</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#小实验"><span class="nav-number">1.2.6.1.</span> <span class="nav-text">小实验</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#partition-reblance"><span class="nav-number">1.2.7.</span> <span class="nav-text">partition reblance</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Replica-state-machine"><span class="nav-number">1.2.8.</span> <span class="nav-text">Replica state machine</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#create-topic"><span class="nav-number">1.2.8.1.</span> <span class="nav-text">create topic</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ReplicaDeletionStarted"><span class="nav-number">1.2.8.2.</span> <span class="nav-text">ReplicaDeletionStarted</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ZKListener-详解"><span class="nav-number">2.</span> <span class="nav-text">ZKListener 详解</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Broker-Change-Listener"><span class="nav-number">2.1.</span> <span class="nav-text">Broker Change Listener</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#delete-broker"><span class="nav-number">2.1.1.</span> <span class="nav-text">delete broker</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#shutdownBroker"><span class="nav-number">2.1.1.1.</span> <span class="nav-text">shutdownBroker</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#onBrokerFailure"><span class="nav-number">2.1.1.2.</span> <span class="nav-text">onBrokerFailure</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#onBrokerStartup"><span class="nav-number">2.1.2.</span> <span class="nav-text">onBrokerStartup</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ISR-Change-Notification-Listener"><span class="nav-number">2.2.</span> <span class="nav-text">ISR Change Notification Listener</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Partition-Modifications-Listener"><span class="nav-number">2.3.</span> <span class="nav-text">Partition Modifications Listener</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fbZhu</span>
+
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/three.min.js"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/canvas_sphere.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.4.js"></script>
+  <script>AV.initialize("cea0JXdngKbekqyUcytEll8T-gzGzoHsz", "4K0JxrNpvBK8dDrqbkSm4axL");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

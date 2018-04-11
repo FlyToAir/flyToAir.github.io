@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="google-site-verification" content="bxXYqd7tQuaxEZXTyg2jG5HJvQhRp0bpb5KzceDpPsU" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Kafka," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="[TOC] 疑问 leader是在何时更新Highwater的？ kafka-manager上出现Lag为负值是什么原因造成的？ Log中的消息被删除时，ISR之间是如何协调的？   下面所有的讨论都是基于一个包含3个broker的kafka集群而言的  Replicaleader vs followers如果将所有的topic的replicas设置为2(_consumer_offsets除外)，">
+<meta name="keywords" content="Kafka">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ISR消息管理">
+<meta property="og:url" content="http://yoursite.com/2017/04/24/ISR消息管理/index.html">
+<meta property="og:site_name" content="天外飞猪的博客">
+<meta property="og:description" content="[TOC] 疑问 leader是在何时更新Highwater的？ kafka-manager上出现Lag为负值是什么原因造成的？ Log中的消息被删除时，ISR之间是如何协调的？   下面所有的讨论都是基于一个包含3个broker的kafka集群而言的  Replicaleader vs followers如果将所有的topic的replicas设置为2(_consumer_offsets除外)，">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-25/97528352-file_1493085463058_12a88.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-26/115323-file_1493196133164_114f9.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-27/31207104-file_1493259488522_397.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-27/51702971-file_1493259483396_ca38.png">
+<meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-27/69901377-file_1493260935890_14937.png">
+<meta property="og:updated_time" content="2018-04-11T05:50:57.882Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ISR消息管理">
+<meta name="twitter:description" content="[TOC] 疑问 leader是在何时更新Highwater的？ kafka-manager上出现Lag为负值是什么原因造成的？ Log中的消息被删除时，ISR之间是如何协调的？   下面所有的讨论都是基于一个包含3个broker的kafka集群而言的  Replicaleader vs followers如果将所有的topic的replicas设置为2(_consumer_offsets除外)，">
+<meta name="twitter:image" content="http://olt6kofv9.bkt.clouddn.com/17-4-25/97528352-file_1493085463058_12a88.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2017/04/24/ISR消息管理/"/>
+
+
+
+
+
+  <title>ISR消息管理 | 天外飞猪的博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">天外飞猪的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            Tags
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/04/24/ISR消息管理/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="fbZhu">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="天外飞猪的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">ISR消息管理</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-04-24T17:09:57+08:00">
+                2017-04-24
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2017/04/24/ISR消息管理/" class="leancloud_visitors" data-flag-title="ISR消息管理">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>[TOC]</p>
+<h1 id="疑问"><a href="#疑问" class="headerlink" title="疑问"></a>疑问</h1><ul>
+<li>leader是在何时更新Highwater的？</li>
+<li>kafka-manager上出现Lag为负值是什么原因造成的？</li>
+<li>Log中的消息被删除时，ISR之间是如何协调的？</li>
+</ul>
+<blockquote>
+<p>下面所有的讨论都是基于一个包含3个broker的kafka集群而言的</p>
+</blockquote>
+<h1 id="Replica"><a href="#Replica" class="headerlink" title="Replica"></a>Replica</h1><h2 id="leader-vs-followers"><a href="#leader-vs-followers" class="headerlink" title="leader vs followers"></a>leader vs followers</h2><p>如果将所有的topic的<code>replicas</code>设置为2(_consumer_offsets除外)，那么对于每个partition而言其Log存在于两个broker上，其中一个作为<strong>leader</strong>，另一个作为<strong>followers</strong></p>
+<p>下图是一个包含3个分区的topic的replicas以及leader分布情况：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-4-25/97528352-file_1493085463058_12a88.png" alt=""></p>
+<h3 id="leader与followers的职责"><a href="#leader与followers的职责" class="headerlink" title="leader与followers的职责"></a>leader与followers的职责</h3><p>之前在<a href="http://blog.leanote.com/post/584933245@qq.com/Kafka-consumer%E5%8E%9F%E7%90%86%E5%89%96%E6%9E%90" target="_blank" rel="noopener">kafka-consumer剖析</a>的文章中介绍过<em>high watermark</em>(简称<strong>HW</strong>)以及<em>log end offset</em>(简称<strong>LEO</strong>)的概念。作为leader，其主要职责是：</p>
+<ul>
+<li>将消息及offset写入Local log &amp; offset</li>
+<li>在followers完全备份了消息后(leader应该是会收到通知)，更新HW</li>
+<li>leader并不需要维护LEO的值，因为在Log中有一个<code>nextOffsetMetadata</code>属性就是每个Log维护的最新offset的信息</li>
+</ul>
+<p>反观followers，其职责则体现在与leader的交互上：</p>
+<ul>
+<li>备份消息，然后通知leader</li>
+<li>更新LEO的值</li>
+</ul>
+<h2 id="创建Replica"><a href="#创建Replica" class="headerlink" title="创建Replica"></a>创建Replica</h2><p>因为每个partition都有对应的replicas，所以创建replica的操作是在<em>Partition</em>中执行的，具体的方法是<code>getOrCreateReplica</code>：<br><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (isReplicaLocal(replicaId)) &#123;</span><br><span class="line">  <span class="comment">//创建Log文件</span></span><br><span class="line">  <span class="keyword">val</span> config = <span class="type">LogConfig</span>.fromProps(...)</span><br><span class="line">  <span class="keyword">val</span> log = logManager.createLog(<span class="type">TopicAndPartition</span>(topic, partitionId), config)</span><br><span class="line">  <span class="comment">//获取checkPoint文件</span></span><br><span class="line">  <span class="keyword">val</span> checkpoint = replicaManager.highWatermarkCheckpoints(log.dir.getParentFile.getAbsolutePath)</span><br><span class="line">  <span class="keyword">val</span> offsetMap = checkpoint.read</span><br><span class="line">  <span class="keyword">val</span> offset = offsetMap.getOrElse(<span class="type">TopicAndPartition</span>(topic, partitionId), <span class="number">0</span>L).min(log.logEndOffset)</span><br><span class="line">  <span class="keyword">val</span> localReplica = <span class="keyword">new</span> <span class="type">Replica</span>(replicaId, <span class="keyword">this</span>, time, offset, <span class="type">Some</span>(log))</span><br><span class="line">  addReplicaIfNotExists(localReplica)</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  <span class="keyword">val</span> remoteReplica = <span class="keyword">new</span> <span class="type">Replica</span>(replicaId, <span class="keyword">this</span>, time)</span><br><span class="line">  addReplicaIfNotExists(remoteReplica)</span><br><span class="line">&#125;</span><br><span class="line">getReplica(replicaId).get</span><br></pre></td></tr></table></figure></p>
+<p>其中：</p>
+<ul>
+<li><em>getReplica</em>与<em>addReplicaIfNotExists</em>都对<code>assignedReplicaMap</code>进行操作</li>
+<li>checkpoint里维护着该log.dir下面所有topic-parition与offset的对应关系</li>
+<li>log.dir是Log文件所在目录，log.dir.getParentFile就是<em>server.properties</em>中定义的<code>log.dirs</code></li>
+</ul>
+<h1 id="ReplicaManager"><a href="#ReplicaManager" class="headerlink" title="ReplicaManager"></a>ReplicaManager</h1><blockquote>
+<p>创建Replica的调用路径是<em>ReplicaManager.becomeLeaderOrFollower-&gt;makeFollowers</em>。ReplicaManager是broker范畴的，管理着broker上面所有的partition</p>
+</blockquote>
+<h2 id="OffsetCheckPoint"><a href="#OffsetCheckPoint" class="headerlink" title="OffsetCheckPoint"></a>OffsetCheckPoint</h2><p>在多磁盘的环境中，log.dirs会定义在多个磁盘上，这样就能将Partiton分布在不同的磁盘上。</p>
+<p>每个磁盘中的Log目录下都维护着3个OffsetCheckPoint文件：<br>: recovery-point-offset-checkpoint<br>: replication-offset-checkpoint：维护parition与offset信息<br>: cleaner-offset-checkpoint</p>
+<p>replication-offset-checkpoint的内容如下：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">0</span><br><span class="line">21</span><br><span class="line">__consumer_offsets 16 0</span><br><span class="line">__consumer_offsets 49 124</span><br><span class="line">admin.benchmark 9 24564634</span><br><span class="line">test 13 16709</span><br><span class="line">theOne 18 0</span><br><span class="line">__consumer_offsets 4 6</span><br><span class="line">...</span><br></pre></td></tr></table></figure></p>
+<p>其中：</p>
+<ul>
+<li>第一行是<code>CurrentVersion</code>的值，默认是0</li>
+<li>第二行是当前Log目录下面分区的数量</li>
+<li>后面紧跟着的21行是分区以及对应的offset信息，格式为：<code>$topic $partition $offset</code></li>
+</ul>
+<p>在ReplicaManager中会将所有log目录下面的replication-offset-checkpoint组成一个名为<code>highWatermarkCheckpoints</code>的Map:<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">val highWatermarkCheckpoints = </span><br><span class="line">  config.logDirs.map(dir =&gt; (new File(dir).getAbsolutePath, </span><br><span class="line">  new OffsetCheckpoint(new File(dir,ReplicaManager.HighWatermarkFilename)))).toMap</span><br></pre></td></tr></table></figure></p>
+<p>其更新操作是由一个定时任务控制的，每隔<code>replica.high.watermark.checkpoint.interval.ms</code>(默认5s)的时间会将所有log目录下的raplica的HW值写入到对应的replication-offset-checkpoint文件中。该定时任务是在<code>becomeLeaderOrFollower</code>方法中被开启的。</p>
+<h2 id="appendMessages"><a href="#appendMessages" class="headerlink" title="appendMessages"></a>appendMessages</h2><p>在<a href="http://blog.leanote.com/post/584933245@qq.com/%E6%B6%88%E6%81%AF%E5%86%99%E5%85%A5%E7%A3%81%E7%9B%98%E5%8F%8A%E5%A4%87%E4%BB%BD%E5%AE%9E%E7%8E%B0%E5%88%86%E6%9E%90" target="_blank" rel="noopener">Log分析</a>曾提到过<code>appendMessages</code>方法，该方法内先将消息写入local(即Leader的Log)，然后判断ack是否=-1来决定是否需要创建延迟的producer请求(不立即反馈，需要等待备份完成，由<code>delayedProducePurgatory</code>进行管理)。<del>该请求是从leader发往followers的</del>，内容包含：</p>
+<ul>
+<li>delayedMs：即producer配置的<em>request.timeout</em></li>
+<li>requiredOffset: Leader在写入消息后的<em>InextOffsetMetadata</em>值(用<code>LogAppendInfo.lastOffset + 1</code>表示)</li>
+</ul>
+<p>在ack = -1的策略下，leader必须在所有的followers都将消息备份的情况下，才会向producer发送反馈，而判断消息是否已完整备份的方法是<code>Partition.checkEnoughReplicasReachOffset</code>：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def checkEnoughReplicasReachOffset(requiredOffset: Long): (Boolean, Errors) = &#123;</span><br><span class="line">  leaderReplicaIfLocal() match &#123;</span><br><span class="line">    case Some(leaderReplica) =&gt;</span><br><span class="line">      val curInSyncReplicas = inSyncReplicas</span><br><span class="line">      //对ISR中所有replicas的LEO校验是否已跟上leader的步伐(包括leader)</span><br><span class="line">      def numAcks = curInSyncReplicas.count &#123; r =&gt;</span><br><span class="line">        if (!r.isLocal)</span><br><span class="line">          if (r.logEndOffset.messageOffset &gt;= requiredOffset) &#123;</span><br><span class="line">            true</span><br><span class="line">          &#125;</span><br><span class="line">          else</span><br><span class="line">            false</span><br><span class="line">        else</span><br><span class="line">          true </span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      val minIsr = leaderReplica.log.get.config.minInSyncReplicas</span><br><span class="line">      </span><br><span class="line">      if (leaderReplica.highWatermark.messageOffset &gt;= requiredOffset) &#123;</span><br><span class="line">        if (minIsr &lt;= curInSyncReplicas.size)</span><br><span class="line">          (true, Errors.NONE)</span><br><span class="line">        else</span><br><span class="line">          (true, Errors.NOT_ENOUGH_REPLICAS_AFTER_APPEND)</span><br><span class="line">      &#125; else</span><br><span class="line">        (false, Errors.NONE)</span><br><span class="line">    case None =&gt;</span><br><span class="line">      (false, Errors.NOT_LEADER_FOR_PARTITION)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<blockquote>
+<p>第一个返回参数表示是否有足够多的replicas达到了<em>requiredOffset</em></p>
+</blockquote>
+<ul>
+<li>如果<em>HW &lt; requiredOffset</em>，表明leader还未收到足够多的replicas的response</li>
+<li><em>HW &gt;= requiredOffset</em>表明HW已经更新过了，此时如果ISR的数量小于misISR，那么就报<code>NOT_ENOUGH_REPLICAS_AFTER_APPEND</code>错</li>
+<li>如果当前ReplicaManger发现local不再是leader了，说明这个broker出现问题了，报<code>NOT_LEADER_FOR_PARTITION</code>错</li>
+</ul>
+<h3 id="Increment-HW"><a href="#Increment-HW" class="headerlink" title="Increment HW"></a><span id="jump">Increment HW</span></h3><p>HW是由leader维护的，其更新时机主要有两种：</p>
+<ol>
+<li>ISR发生变化，包括：</li>
+</ol>
+<ul>
+<li>新的broker成为leader</li>
+<li>shrink ISR</li>
+<li>expand ISR</li>
+</ul>
+<ol start="2">
+<li>Replicas已备份完新的消息，判别的方法有两种：<ol>
+<li>ISR中Replicas中的最小LEO值大于HW</li>
+<li>HW的<em>LogOffsetMetadata</em>存在一个老的log segment中，表明上一次Producer请求已处理完成(即消息已经在完成备份)</li>
+</ol>
+</li>
+</ol>
+<h3 id="ShrinkIsr"><a href="#ShrinkIsr" class="headerlink" title="ShrinkIsr"></a>ShrinkIsr</h3><h3 id="becomeLeaderOrFollower"><a href="#becomeLeaderOrFollower" class="headerlink" title="becomeLeaderOrFollower"></a>becomeLeaderOrFollower</h3><h2 id="ReplcaFetcher"><a href="#ReplcaFetcher" class="headerlink" title="ReplcaFetcher"></a>ReplcaFetcher</h2><h3 id="启动过程ReplicaManger相关日志记录"><a href="#启动过程ReplicaManger相关日志记录" class="headerlink" title="启动过程ReplicaManger相关日志记录"></a>启动过程ReplicaManger相关日志记录</h3><p>以broker3启动日志为例：<br>在Log加载、处理完后，首先是unblock操作：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[2017-04-25 13:35:57,270] DEBUG [Replica Manager on Broker 3]: Request key __consumer_offsets-25 unblocked 0 producer requests. (kafka.server.ReplicaManager)</span><br><span class="line">[2017-04-25 13:35:57,270] DEBUG [Replica Manager on Broker 3]: Request key __consumer_offsets-25 unblocked 0 producer requests. (kafka.server.ReplicaManager)</span><br><span class="line">[2017-04-25 13:35:57,270] DEBUG [Replica Manager on Broker 3]: Request key __consumer_offsets-25 unblocked 0 fetch requests. (kafka.server.ReplicaManager)</span><br><span class="line">[2017-04-25 13:35:57,270] DEBUG [Replica Manager on Broker 3]: Request key __consumer_offsets-25 unblocked 0 fetch requests. (kafka.server.ReplicaManager)</span><br></pre></td></tr></table></figure></p>
+<p>应该是解封在关闭阶段被阻塞的一些request</p>
+<p>下面开启ReplicaFetcherThread：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[2017-04-25 13:35:57,367] INFO [ReplicaFetcherThread-0-1], Starting  (kafka.server.ReplicaFetcherThread)</span><br><span class="line">[2017-04-25 13:35:57,384] INFO [ReplicaFetcherThread-3-1], Starting  (kafka.server.ReplicaFetcherThread)</span><br><span class="line">[2017-04-25 13:35:57,384] INFO [ReplicaFetcherThread-1-2], Starting  (kafka.server.ReplicaFetcherThread)</span><br><span class="line">[2017-04-25 13:35:57,398] INFO [ReplicaFetcherThread-2-2], Starting  (kafka.server.ReplicaFetcherThread)</span><br><span class="line">[2017-04-25 13:35:57,406] INFO [ReplicaFetcherThread-1-1], Starting  (kafka.server.ReplicaFetcherThread)</span><br><span class="line">[2017-04-25 13:35:57,414] INFO [ReplicaFetcherThread-0-2], Starting  (kafka.server.ReplicaFetcherThread)</span><br><span class="line">[2017-04-25 13:35:57,423] INFO [ReplicaFetcherThread-2-1], Starting  (kafka.server.ReplicaFetcherThread)</span><br><span class="line">[2017-04-25 13:35:57,435] INFO [ReplicaFetcherThread-3-2], Starting  (kafka.server.ReplicaFetcherThread)</span><br></pre></td></tr></table></figure></p>
+<p>数字编号的含义是什么呢？？</p>
+<p>接下来是添加Fetcher请求，向Remote Broker请求那些本地不是leader的分区的数据。摘取片段如下：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">INFO [ReplicaFetcherManager on broker 3] Added fetcher for partitions List([topic1-8, initOffset 6538 to broker BrokerEndPoint(1,10.45.4.9,9092)] ,[topic2-9, initOffset 0 to broker BrokerEndPoint(1,10.45.4.9,9092)]...)</span><br></pre></td></tr></table></figure></p>
+<h3 id="ReplicaFetcherThread"><a href="#ReplicaFetcherThread" class="headerlink" title="ReplicaFetcherThread"></a>ReplicaFetcherThread</h3><blockquote>
+<p>每个ReplicaManager不仅要维护一个producer的炼狱(<em>delayedProducePurgatory</em>)，还维护了一个fetcher的炼狱(<em>delayedFetchPurgatory</em>)。fetch这个操作不仅仅是由consumer触发的，followers备份消息也是通过向leader fetch实现的。</p>
+</blockquote>
+<h4 id="ReplicaFetcherManager"><a href="#ReplicaFetcherManager" class="headerlink" title="ReplicaFetcherManager"></a><strong>ReplicaFetcherManager</strong></h4><ul>
+<li><em>ReplicaFetcherManager</em>管理着ReplicaFetcherThread的创建和关闭工作。</li>
+<li>该manager的命名格式为：<em>“ReplicaFetcherManager on broker $ID”</em></li>
+</ul>
+<h4 id="thread"><a href="#thread" class="headerlink" title="thread"></a><strong>thread</strong></h4><ul>
+<li>fetcher的数量由<code>num.replica.fetchers</code>控制：<br><code>(31 * topic.hashCode() + partitionId) % numFetchers</code>，当该参数设置为4，那么 $fetcherId∈[0,1,2,3]$，对于3节点replicas=2的集群，每个broker需要$4*2=8$个fetcherThread：<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">val partitionsPerFetcher = partitionAndOffsets.groupBy&#123; case(topicAndPartition, brokerAndInitialOffset) =&gt;</span><br><span class="line">  BrokerAndFetcherId(brokerAndInitialOffset.broker, getFetcherId(topicAndPartition.topic, topicAndPartition.partition))&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>上面的代码中将<strong>partition-broker</strong>这个map按照<em>broker-&gt;fetcherId</em>的对应关系进行分组。</p>
+<ul>
+<li>fetcherThread的命名方式为：<em>ReplicaFetcherThread-fetcherId-brokerId</em></li>
+<li>ReplicaFetcherThread是个定时执行的线程，执行间隔由<code>replica.fetch.backoff.ms</code>控制，默认为1s</li>
+<li>每个ReplicaFethcerThread的fetch目标是一个broker上的若干topic-partition</li>
+</ul>
+<h4 id="工作流程"><a href="#工作流程" class="headerlink" title="工作流程"></a><strong>工作流程</strong></h4><p><img src="http://olt6kofv9.bkt.clouddn.com/17-4-26/115323-file_1493196133164_114f9.png" alt=""></p>
+<h4 id="processPartitionData"><a href="#processPartitionData" class="headerlink" title="processPartitionData"></a><strong>processPartitionData</strong></h4><p>当前：<br>: broker2作为test-1的follower<br>: 其LEO值为17314<br>: leader的<em>HW=17314</em><br>: FetchRequest中的<em>fetchOffset = 17314</em></p>
+<ul>
+<li><p>收到一条消息：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[ReplicaFetcherThread-3-1], Follower 2 has replica log end offset 17314 for partition test-1. Received 45 messages and leader hw 17314</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>对log执行append操作</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[ReplicaFetcherThread-3-1], Follower 2 has replica log end offset 17315 after appending 45 bytes of messages for partition test-1</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<blockquote>
+<p>与<code>appendMessagesToLeader</code>时不相同的是，follower执行append操作不会再进行offset配置操作，用得就是leader传过来的offset</p>
+</blockquote>
+<ul>
+<li>设置follower的HW值<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[ReplicaFetcherThread-3-1], Follower 2 set replica high watermark for partition [test,1] to 17314</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>1s后再次fetch到消息：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[ReplicaFetcherThread-3-1], Follower 2 has replica log end offset 17315 for partition test-1. Received 45 messages and leader hw 17315</span><br><span class="line">[ReplicaFetcherThread-3-1], Follower 2 has replica log end offset 17316 after appending 45 bytes of messages for partition test-1</span><br><span class="line">[ReplicaFetcherThread-3-1], Follower 2 set replica high watermark for partition [test,1] to 17315</span><br></pre></td></tr></table></figure></p>
+<p>由上面的日志可以注意到：</p>
+<ol>
+<li>LEO的值由17314 =&gt; 17315，这是因为前面执行的<em>Log.append</em>操作使得<em>nextOffsetMetadata</em>的值+1</li>
+<li>leader的HW值变成了17315,这是由于leader检测到了followers(就是broker2)LEO的最小值已经变成了17315，所以更新了HW值,具体实现在<a href="#jump">Increment HW</a>中有介绍</li>
+</ol>
+<h4 id="handleOffsetOutOfRange"><a href="#handleOffsetOutOfRange" class="headerlink" title="handleOffsetOutOfRange"></a><strong>handleOffsetOutOfRange</strong></h4><blockquote>
+<p>当ReplicaFether的fetchOffset不在leader的offset之内(即大于最大值或者小于最小值)，那么就会收到<code>OffsetOutOfRangeException</code></p>
+</blockquote>
+<p>假设当前test-1这个partition的leader为1，新增broker2作为follower</p>
+<p><img src="http://olt6kofv9.bkt.clouddn.com/17-4-27/31207104-file_1493259488522_397.png" alt=""></p>
+<p>broker2在catch up的过程中broker1挂了，broker2被选为leader。(需要<code>unclean.leader.election.enable</code>配置为1，才能允许这样的<em>脏选举</em>)</p>
+<h5 id="情况一、Replica-fetchOffset-gt-leader-LEO"><a href="#情况一、Replica-fetchOffset-gt-leader-LEO" class="headerlink" title="情况一、Replica fetchOffset &gt; leader LEO"></a><strong>情况一、Replica fetchOffset &gt; leader LEO</strong></h5><p><img src="http://olt6kofv9.bkt.clouddn.com/17-4-27/51702971-file_1493259483396_ca38.png" alt=""><br>broker1在恢复后，成为了follower，向leader发送ReplicaFetcherRequest，其中<em>fetchOffset=7</em>，该值大于leader的LEO，所以需要将broker1上该分区的Log执行truncate操作使得LEO值与leader保持一致。</p>
+<blockquote>
+<p>值得注意的是，这样的truncate操作后，follower与leader的消息并不完全一致的，上例中，offset为3和4的消息就是不一致的</p>
+</blockquote>
+<h5 id="情况二、Replica-fetchOffset-lt-leader-start-offset"><a href="#情况二、Replica-fetchOffset-lt-leader-start-offset" class="headerlink" title="情况二、Replica fetchOffset &lt; leader start offset"></a><strong>情况二、Replica fetchOffset &lt; leader start offset</strong></h5><p><img src="http://olt6kofv9.bkt.clouddn.com/17-4-27/69901377-file_1493260935890_14937.png" alt=""></p>
+<p>broker1在恢复之前，broker2添加了很多消息，并且也删除了一个消息，导致其最小的offset大于broker1中的LEO，这种情况下，broker1中的所有消息都没有意义了(因为ISR中的leader不再维护这些消息)，所以就删除掉所有的segment，然后fetch leader的第一条消息</p>
+<blockquote>
+<p>Kafka_0.10.1.1版本对于收到<em>OffsetOutOfRangeException</em>时follower的LEO处于leader开始与LEO之间的情况没有对策。</p>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2017/04/28/Controller工作原理/" rel="prev" title="Controller工作原理">
+                Controller工作原理 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC8zNTQ1NC8xMTk5MA"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="http://olt6kofv9.bkt.clouddn.com/18-4-4/21649873.jpg"
+                alt="fbZhu" />
+            
+              <p class="site-author-name" itemprop="name">fbZhu</p>
+              <p class="site-description motion-element" itemprop="description">人为什么越长大越孤单？
+答:内心中有秘密,无法诉说
+</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#疑问"><span class="nav-number">1.</span> <span class="nav-text">疑问</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Replica"><span class="nav-number">2.</span> <span class="nav-text">Replica</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#leader-vs-followers"><span class="nav-number">2.1.</span> <span class="nav-text">leader vs followers</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#leader与followers的职责"><span class="nav-number">2.1.1.</span> <span class="nav-text">leader与followers的职责</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建Replica"><span class="nav-number">2.2.</span> <span class="nav-text">创建Replica</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ReplicaManager"><span class="nav-number">3.</span> <span class="nav-text">ReplicaManager</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#OffsetCheckPoint"><span class="nav-number">3.1.</span> <span class="nav-text">OffsetCheckPoint</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#appendMessages"><span class="nav-number">3.2.</span> <span class="nav-text">appendMessages</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Increment-HW"><span class="nav-number">3.2.1.</span> <span class="nav-text">Increment HW</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ShrinkIsr"><span class="nav-number">3.2.2.</span> <span class="nav-text">ShrinkIsr</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#becomeLeaderOrFollower"><span class="nav-number">3.2.3.</span> <span class="nav-text">becomeLeaderOrFollower</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ReplcaFetcher"><span class="nav-number">3.3.</span> <span class="nav-text">ReplcaFetcher</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#启动过程ReplicaManger相关日志记录"><span class="nav-number">3.3.1.</span> <span class="nav-text">启动过程ReplicaManger相关日志记录</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ReplicaFetcherThread"><span class="nav-number">3.3.2.</span> <span class="nav-text">ReplicaFetcherThread</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ReplicaFetcherManager"><span class="nav-number">3.3.2.1.</span> <span class="nav-text">ReplicaFetcherManager</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#thread"><span class="nav-number">3.3.2.2.</span> <span class="nav-text">thread</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#工作流程"><span class="nav-number">3.3.2.3.</span> <span class="nav-text">工作流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#processPartitionData"><span class="nav-number">3.3.2.4.</span> <span class="nav-text">processPartitionData</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#handleOffsetOutOfRange"><span class="nav-number">3.3.2.5.</span> <span class="nav-text">handleOffsetOutOfRange</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#情况一、Replica-fetchOffset-gt-leader-LEO"><span class="nav-number">3.3.2.5.1.</span> <span class="nav-text">情况一、Replica fetchOffset &gt; leader LEO</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#情况二、Replica-fetchOffset-lt-leader-start-offset"><span class="nav-number">3.3.2.5.2.</span> <span class="nav-text">情况二、Replica fetchOffset &lt; leader start offset</span></a></li></ol></li></ol></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fbZhu</span>
+
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/three.min.js"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/three/canvas_sphere.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.4.js"></script>
+  <script>AV.initialize("cea0JXdngKbekqyUcytEll8T-gzGzoHsz", "4K0JxrNpvBK8dDrqbkSm4axL");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
