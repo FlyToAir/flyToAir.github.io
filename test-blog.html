@@ -70,7 +70,7 @@
 
 
 
-  <meta name="keywords" content="Kafka," />
+  <meta name="keywords" content="test," />
 
 
 
@@ -81,20 +81,18 @@
 
 
 
-<meta name="description" content="为了方便用户感知发送的情况，kafka producer中提供了callback机制，springkafka中实现了ProducerListener  遇到的问题近期生产环境上由于版本BUG问题导致一段时间内某台broker出现假死的异常状态，在这异常期间内发送到该broker上的消息都失败了。在各个系统中我们实现了一个ProducerListener用于将发送失败的消息写入到Hbase中，方便">
-<meta name="keywords" content="Kafka">
+<meta name="description" content="this is titlethis is the second title//this is codepublic static void main(String[] args) &amp;#123;    System.out.println(&quot;hello world&quot;);&amp;#125;">
+<meta name="keywords" content="test">
 <meta property="og:type" content="article">
-<meta property="og:title" content="producer的回调实现">
-<meta property="og:url" content="https://flytoair.github.io/2017/03/07/producer的回调实现/index.html">
+<meta property="og:title" content="test_blog">
+<meta property="og:url" content="https://flytoair.github.io/test-blog.html">
 <meta property="og:site_name" content="天外飞猪的博客">
-<meta property="og:description" content="为了方便用户感知发送的情况，kafka producer中提供了callback机制，springkafka中实现了ProducerListener  遇到的问题近期生产环境上由于版本BUG问题导致一段时间内某台broker出现假死的异常状态，在这异常期间内发送到该broker上的消息都失败了。在各个系统中我们实现了一个ProducerListener用于将发送失败的消息写入到Hbase中，方便">
+<meta property="og:description" content="this is titlethis is the second title//this is codepublic static void main(String[] args) &amp;#123;    System.out.println(&quot;hello world&quot;);&amp;#125;">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="https://leanote.com/api/file/getImage?fileId=591ac814ab64415c1c001112">
-<meta property="og:updated_time" content="2018-04-11T05:53:29.968Z">
+<meta property="og:updated_time" content="2018-04-04T07:28:05.135Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="producer的回调实现">
-<meta name="twitter:description" content="为了方便用户感知发送的情况，kafka producer中提供了callback机制，springkafka中实现了ProducerListener  遇到的问题近期生产环境上由于版本BUG问题导致一段时间内某台broker出现假死的异常状态，在这异常期间内发送到该broker上的消息都失败了。在各个系统中我们实现了一个ProducerListener用于将发送失败的消息写入到Hbase中，方便">
-<meta name="twitter:image" content="https://leanote.com/api/file/getImage?fileId=591ac814ab64415c1c001112">
+<meta name="twitter:title" content="test_blog">
+<meta name="twitter:description" content="this is titlethis is the second title//this is codepublic static void main(String[] args) &amp;#123;    System.out.println(&quot;hello world&quot;);&amp;#125;">
 
 
 
@@ -124,13 +122,13 @@
 
 
 
-  <link rel="canonical" href="https://flytoair.github.io/2017/03/07/producer的回调实现/"/>
+  <link rel="canonical" href="https://flytoair.github.io/test-blog.html"/>
 
 
 
 
 
-  <title>producer的回调实现 | 天外飞猪的博客</title>
+  <title>test_blog | 天外飞猪的博客</title>
   
 
 
@@ -247,7 +245,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://flytoair.github.io/2017/03/07/producer的回调实现/">
+    <link itemprop="mainEntityOfPage" href="https://flytoair.github.io/test-blog.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="fbZhu">
@@ -264,7 +262,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">producer的回调实现</h1>
+          <h1 class="post-title" itemprop="name headline">test_blog</h1>
         
 
         <div class="post-meta">
@@ -276,8 +274,8 @@
               
                 <span class="post-meta-item-text">Posted on</span>
               
-              <time title="Post created" itemprop="dateCreated datePublished" datetime="2017-03-07T13:23:01+08:00">
-                2017-03-07
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-04-04T11:22:14+08:00">
+                2018-04-04
               </time>
             
 
@@ -294,7 +292,7 @@
 
           
           
-             <span id="/2017/03/07/producer的回调实现/" class="leancloud_visitors" data-flag-title="producer的回调实现">
+             <span id="/test-blog.html" class="leancloud_visitors" data-flag-title="test_blog">
                <span class="post-meta-divider">|</span>
                <span class="post-meta-item-icon">
                  <i class="fa fa-eye"></i>
@@ -325,19 +323,7 @@
       
 
       
-        <blockquote>
-<p>为了方便用户感知发送的情况，kafka producer中提供了<code>callback</code>机制，springkafka中实现了<code>ProducerListener</code></p>
-</blockquote>
-<h3 id="遇到的问题"><a href="#遇到的问题" class="headerlink" title="遇到的问题"></a>遇到的问题</h3><p>近期生产环境上由于版本BUG问题导致一段时间内某台broker出现假死的异常状态，在这异常期间内发送到该broker上的消息都失败了。在各个系统中我们实现了一个ProducerListener用于将发送失败的消息写入到Hbase中，方便后续处理。</p>
-<p>然而，实际情况是Hbase中(与log中一致，排除写入Hbase的错误)的错误记录<strong>不全</strong>。</p>
-<p>接下来以从上往下的层次顺序解析下Producer callback的运行机制，以及对Exception的处理</p>
-<h3 id="ProducerListener"><a href="#ProducerListener" class="headerlink" title="ProducerListener"></a>ProducerListener</h3><p>首先看下KafkaTemplate的简化UML图<br><img src="https://leanote.com/api/file/getImage?fileId=591ac814ab64415c1c001112" alt=""><br>在doSend方法中为producer的send方法设置回调函数：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">protected ListenableFuture&lt;SendResult&lt;K, V&gt;&gt; doSend(final ProducerRecord&lt;K, V&gt; producerRecord) &#123;</span><br><span class="line">    this.producer.send(producerRecord, new Callback() &#123;</span><br><span class="line">        public void onCompletion(RecordMetadata metadata, Exception exception) &#123;</span><br><span class="line">            if(exception == null) &#123;</span><br><span class="line">                if(KafkaTemplate.this.producerListener != null &amp;&amp; KafkaTemplate.this.producerListener.isInterestedInSuccess()) &#123;</span><br><span class="line">                    KafkaTemplate.this.producerListener.onSuccess(...);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                if(KafkaTemplate.this.producerListener != null) &#123;</span><br><span class="line">                    KafkaTemplate.this.producerListener.onError(...,exception);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>如果我们在创建KafkaTemplate时没有设置producerListener属性，那么就会使用默认的：<code>LoggingProducerListener</code>。</p>
-<h3 id="KafkaProducer"><a href="#KafkaProducer" class="headerlink" title="KafkaProducer"></a>KafkaProducer</h3><p>之前对KafkaProducer的异步发送机制实现进行过分析，有一个sender线程用于协调消息队列及网络通信的工作，在运行过程中可能发生多种异常需要统一进行处理：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">private Future&lt;RecordMetadata&gt; doSend(ProducerRecord&lt;K, V&gt; record, Callback callback) &#123;</span><br><span class="line">    try &#123;</span><br><span class="line">        Callback interceptCallback = this.interceptors == null ? callback : new InterceptorCallback&lt;&gt;(callback, this.interceptors, tp);</span><br><span class="line">        RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey, serializedValue, interceptCallback, remainingWaitMs);</span><br><span class="line">        this.sender.wakeup();</span><br><span class="line">        return result.future;</span><br><span class="line">    //API异常会调用callback的onCompletion方法</span><br><span class="line">    &#125;catch (ApiException e) &#123;</span><br><span class="line">        callback.onCompletion(null, e);</span><br><span class="line">        this.errors.record();</span><br><span class="line">        if (this.interceptors != null)</span><br><span class="line">            this.interceptors.onSendError(record, tp, e);</span><br><span class="line">        return new FutureFailure(e);</span><br><span class="line">    //其他异常直接抛出</span><br><span class="line">    &#125; catch (Exception e)&#123;</span><br><span class="line">        if (this.interceptors != null)</span><br><span class="line">            this.interceptors.onSendError(record, tp, e);</span><br><span class="line">        throw e;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></p>
-<p><code>interceptCallback</code>将KafkaTemplate注入的ProducerListener以及KafkaProducer配置的拦截器<code>ProducerInterceptors</code>组合在一起，统一对发送的执行结果进行拦截处理。</p>
-<p>通过append方法将拦截器配置到每个RecordBatch中<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public FutureRecordMetadata tryAppend( byte[] key, byte[] value, Callback callback) &#123;</span><br><span class="line">    ...</span><br><span class="line">    if (callback != null)</span><br><span class="line">    thunks.add(new Thunk(callback, future));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>Thunk是内部类，将callback于FutureRecordMetadata捆绑在一起。在每个RecordBatch被处理完成的时候(3种情况：<code>1.发送完成；2.失效；3.producer被强制关闭；</code>)会执行绑定的callback方法：<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">public void done(long baseOffset, long timestamp, RuntimeException exception) &#123;</span><br><span class="line">    for (int i = 0; i &lt; this.thunks.size(); i++) &#123;</span><br><span class="line">        Thunk thunk = this.thunks.get(i);</span><br><span class="line">        if (exception == null) &#123;</span><br><span class="line">            RecordMetadata metadata = new RecordMetadata(...);</span><br><span class="line">            thunk.callback.onCompletion(metadata, null);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            thunk.callback.onCompletion(null, exception);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>按理来说，这里已经覆盖了所有的情况，为什么现实使用中会有发送失败未记录下来的情况呢？</p>
+        <h1 id="this-is-title"><a href="#this-is-title" class="headerlink" title="this is title"></a>this is title</h1><h2 id="this-is-the-second-title"><a href="#this-is-the-second-title" class="headerlink" title="this is the second title"></a>this is the second title</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//this is code</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    System.out.println(<span class="string">"hello world"</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
       
     </div>
@@ -355,7 +341,7 @@
       
         <div class="post-tags">
           
-            <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+            <a href="/tags/test/" rel="tag"># test</a>
           
         </div>
       
@@ -368,8 +354,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2017/03/01/Kafka consumer原理剖析/" rel="next" title="Kafka consumer原理剖析">
-                <i class="fa fa-chevron-left"></i> Kafka consumer原理剖析
+              <a href="/hello-world.html" rel="next" title="Hello World">
+                <i class="fa fa-chevron-left"></i> Hello World
               </a>
             
           </div>
@@ -378,8 +364,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2017/04/01/SocketServer工作原理/" rel="prev" title="SocketServer工作原理">
-                SocketServer工作原理 <i class="fa fa-chevron-right"></i>
+              <a href="/Kafka-Coordinator实现细节.html" rel="prev" title="Kafka Coordinator实现细节">
+                Kafka Coordinator实现细节 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -514,7 +500,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#遇到的问题"><span class="nav-number">1.</span> <span class="nav-text">遇到的问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ProducerListener"><span class="nav-number">2.</span> <span class="nav-text">ProducerListener</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#KafkaProducer"><span class="nav-number">3.</span> <span class="nav-text">KafkaProducer</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#this-is-title"><span class="nav-number">1.</span> <span class="nav-text">this is title</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#this-is-the-second-title"><span class="nav-number">1.1.</span> <span class="nav-text">this is the second title</span></a></li></ol></li></ol></div>
             
 
           </div>

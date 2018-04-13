@@ -2,91 +2,91 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>https://flytoair.github.io/2017/02/24/%E3%80%8A%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3JVM%E3%80%8B%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/</loc>
+    <loc>https://flytoair.github.io/%E3%80%8A%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3JVM%E3%80%8B%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html</loc>
     
     <lastmod>2018-04-11T07:50:20.373Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/09/30/Effective%20Java%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/</loc>
+    <loc>https://flytoair.github.io/Effective%20Java%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html</loc>
     
     <lastmod>2018-04-11T07:47:54.525Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/02/24/Jmock%E6%8E%A2%E7%A9%B6/</loc>
+    <loc>https://flytoair.github.io/Jmock%E6%8E%A2%E7%A9%B6.html</loc>
     
     <lastmod>2018-04-11T07:42:37.781Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/09/07/%E5%A6%82%E4%BD%95%E6%84%89%E5%BF%AB%E7%9A%84%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E6%B1%A0/</loc>
+    <loc>https://flytoair.github.io/%E5%A6%82%E4%BD%95%E6%84%89%E5%BF%AB%E7%9A%84%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E6%B1%A0.html</loc>
     
     <lastmod>2018-04-11T06:15:23.546Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2018/04/11/%E8%A1%A8%E8%BF%9E%E6%8E%A5%E6%9C%80%E4%BC%98%E6%96%B9%E6%A1%88/</loc>
+    <loc>https://flytoair.github.io/%E8%A1%A8%E8%BF%9E%E6%8E%A5%E6%9C%80%E4%BC%98%E6%96%B9%E6%A1%88.html</loc>
     
     <lastmod>2018-04-11T06:07:20.603Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/03/07/producer%E7%9A%84%E5%9B%9E%E8%B0%83%E5%AE%9E%E7%8E%B0/</loc>
+    <loc>https://flytoair.github.io/producer%E7%9A%84%E5%9B%9E%E8%B0%83%E5%AE%9E%E7%8E%B0.html</loc>
     
     <lastmod>2018-04-11T05:53:29.968Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/02/28/kafka%20producer%E5%8E%9F%E7%90%86%E6%A2%B3%E7%90%86/</loc>
+    <loc>https://flytoair.github.io/kafka%20producer%E5%8E%9F%E7%90%86%E6%A2%B3%E7%90%86.html</loc>
     
     <lastmod>2018-04-11T05:53:16.280Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/04/01/SocketServer%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/</loc>
+    <loc>https://flytoair.github.io/SocketServer%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.html</loc>
     
     <lastmod>2018-04-11T05:53:01.744Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/02/28/Metadata%E8%AF%A6%E8%A7%A3/</loc>
+    <loc>https://flytoair.github.io/Metadata%E8%AF%A6%E8%A7%A3.html</loc>
     
     <lastmod>2018-04-11T05:52:52.233Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/03/01/Kafka%20consumer%E5%8E%9F%E7%90%86%E5%89%96%E6%9E%90/</loc>
+    <loc>https://flytoair.github.io/Kafka%20consumer%E5%8E%9F%E7%90%86%E5%89%96%E6%9E%90.html</loc>
     
     <lastmod>2018-04-11T05:52:41.130Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/04/28/Controller%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/</loc>
+    <loc>https://flytoair.github.io/Controller%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.html</loc>
     
     <lastmod>2018-04-11T05:51:20.688Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2017/04/24/ISR%E6%B6%88%E6%81%AF%E7%AE%A1%E7%90%86/</loc>
+    <loc>https://flytoair.github.io/ISR%E6%B6%88%E6%81%AF%E7%AE%A1%E7%90%86.html</loc>
     
     <lastmod>2018-04-11T05:50:57.882Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2018/04/11/kafka%E6%B6%88%E6%81%AF/</loc>
+    <loc>https://flytoair.github.io/kafka%E6%B6%88%E6%81%AF.html</loc>
     
     <lastmod>2018-04-11T05:43:20.583Z</lastmod>
     
@@ -100,21 +100,21 @@
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2018/04/04/Kafka-Coordinator%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82/</loc>
+    <loc>https://flytoair.github.io/Kafka-Coordinator%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82.html</loc>
     
     <lastmod>2018-04-04T07:44:07.656Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2018/04/04/test-blog/</loc>
+    <loc>https://flytoair.github.io/test-blog.html</loc>
     
     <lastmod>2018-04-04T07:28:05.135Z</lastmod>
     
   </url>
   
   <url>
-    <loc>https://flytoair.github.io/2018/04/04/hello-world/</loc>
+    <loc>https://flytoair.github.io/hello-world.html</loc>
     
     <lastmod>2018-04-04T02:16:19.239Z</lastmod>
     
