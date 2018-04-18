@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://flytoair.github.io/Controller%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.html</loc>
+    
+    <lastmod>2018-04-18T05:59:52.448Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://flytoair.github.io/%E3%80%8A%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3JVM%E3%80%8B%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html</loc>
     
     <lastmod>2018-04-11T07:50:20.373Z</lastmod>
@@ -68,13 +75,6 @@
     <loc>https://flytoair.github.io/Kafka%20consumer%E5%8E%9F%E7%90%86%E5%89%96%E6%9E%90.html</loc>
     
     <lastmod>2018-04-11T05:52:41.130Z</lastmod>
-    
-  </url>
-  
-  <url>
-    <loc>https://flytoair.github.io/Controller%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.html</loc>
-    
-    <lastmod>2018-04-11T05:51:20.688Z</lastmod>
     
   </url>
   

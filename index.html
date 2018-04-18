@@ -1954,7 +1954,33 @@
 <blockquote>
 <p>划分好了当前的状态后，下面要将new和offline的转化成Online</p>
 </blockquote>
-<p>如何转化呢？当然是选举leader咯，关键代码在<code>OfflinePartitionLeaderSelector</code>这个类里，下面这个表是选举时遇到的几种情况<br>ISR|replicas|result<br>—|—|—<br>(1,2)|(1,2)|leader = 1<br>null|(2,3)|unclean enabled ? leader=2 : <em>NoReplicaOnlineException</em><br>null|null|<em>NoReplicaOnlineException</em></p>
+<p>如何转化呢？当然是选举leader咯，关键代码在<code>OfflinePartitionLeaderSelector</code>这个类里，下面这个表是选举时遇到的几种情况</p>
+<table>
+<thead>
+<tr>
+<th>ISR</th>
+<th>replicas</th>
+<th>result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(1,2)</td>
+<td>(1,2)</td>
+<td>leader = 1</td>
+</tr>
+<tr>
+<td>null</td>
+<td>(2,3)</td>
+<td>unclean enabled ? leader=2 : <em>NoReplicaOnlineException</em></td>
+</tr>
+<tr>
+<td>null</td>
+<td>null</td>
+<td><em>NoReplicaOnlineException</em></td>
+</tr>
+</tbody>
+</table>
 <p>如当前有个repilca设置为1的topic：”jjhtest”，当前leader与isr的分配为：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-5-8/33844974-file_1494227473975_176f5.png" alt=""></p>
 <p>接下来我重启broker3，会发生什么呢？</p>
 <ol>

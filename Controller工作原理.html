@@ -101,7 +101,7 @@
 <meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-8/47635529-file_1494231488624_78ec.png">
 <meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-9/61651338-file_1494313792247_3a25.png">
 <meta property="og:image" content="http://olt6kofv9.bkt.clouddn.com/17-5-11/41268388-file_1494473080893_14c67.png">
-<meta property="og:updated_time" content="2018-04-11T05:51:20.688Z">
+<meta property="og:updated_time" content="2018-04-18T05:59:52.448Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Controller工作原理">
 <meta name="twitter:description" content="[TOC] start up controller 引入Controller的目的是为了减小ZK的压力以及降低整个分布式系统的复杂度。  注册监听向zk注册监听两个实例：  SessionExpirationListener：如果session时效了，zk会负责重连的，kafka这边不需要处理 LeaderChangeListener：监听集群的leader(即controller)发生改变，对于">
@@ -408,7 +408,33 @@
 <blockquote>
 <p>划分好了当前的状态后，下面要将new和offline的转化成Online</p>
 </blockquote>
-<p>如何转化呢？当然是选举leader咯，关键代码在<code>OfflinePartitionLeaderSelector</code>这个类里，下面这个表是选举时遇到的几种情况<br>ISR|replicas|result<br>—|—|—<br>(1,2)|(1,2)|leader = 1<br>null|(2,3)|unclean enabled ? leader=2 : <em>NoReplicaOnlineException</em><br>null|null|<em>NoReplicaOnlineException</em></p>
+<p>如何转化呢？当然是选举leader咯，关键代码在<code>OfflinePartitionLeaderSelector</code>这个类里，下面这个表是选举时遇到的几种情况</p>
+<table>
+<thead>
+<tr>
+<th>ISR</th>
+<th>replicas</th>
+<th>result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(1,2)</td>
+<td>(1,2)</td>
+<td>leader = 1</td>
+</tr>
+<tr>
+<td>null</td>
+<td>(2,3)</td>
+<td>unclean enabled ? leader=2 : <em>NoReplicaOnlineException</em></td>
+</tr>
+<tr>
+<td>null</td>
+<td>null</td>
+<td><em>NoReplicaOnlineException</em></td>
+</tr>
+</tbody>
+</table>
 <p>如当前有个repilca设置为1的topic：”jjhtest”，当前leader与isr的分配为：<br><img src="http://olt6kofv9.bkt.clouddn.com/17-5-8/33844974-file_1494227473975_176f5.png" alt=""></p>
 <p>接下来我重启broker3，会发生什么呢？</p>
 <ol>
